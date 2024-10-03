@@ -12,7 +12,9 @@ echo off | sudo tee /sys/devices/system/cpu/smt/control
 ```
 
 ### Tested configurations
-* Different RISC-V cores, bare-metal & under Linux (FPGA, CloudBEAR)
-* Intel Core i5-4300M, under Linux (author laptop)
-* AMD A12
+* Different RISC-V cores, bare-metal (FPGA)
+* Intel Core i5-4300M, on Linux (author laptop)
+* AMD A12-9720P, on Linux (author laptop)
+
+For test results see `examples` directory
 
