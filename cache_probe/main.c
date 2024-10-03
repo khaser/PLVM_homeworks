@@ -46,7 +46,7 @@ long diffClock(const my_clock a, const my_clock b) {
 }
 
 // For linux we should run more iterations to compensate non deterministic environment
-#define ITERS 1000
+#define ITERS 10000
 // ^^^ LINUX
 #endif
 
@@ -71,56 +71,58 @@ long test(uintptr_t* arr, int stride_lines, int spots) {
 int main() {
 
     const long n = MAX_ASSOC * LINE_SZ * (1 << MAX_IDX_BITS) / sizeof(uintptr_t);
-    uintptr_t* arr = malloc(n * sizeof(uintptr_t));
+    uintptr_t* arr = aligned_alloc(1 << MAX_IDX_BITS, n * sizeof(uintptr_t));
     printf("N: %ld, arr: %p\n", n, arr);
 
+    // Calculate spots/stride table
+    long ss_table[MAX_IDX_BITS + 1][MAX_ASSOC + 1];
+    for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
+        for (int idx_bit = 0; idx_bit <= MAX_IDX_BITS; ++idx_bit) {
+            ss_table[idx_bit][spots] = test(arr, 1 << idx_bit, spots);
+        }
+    }
+
+    printf("Spots/Stride table\n");
     for (int idx_bit = 0; idx_bit <= MAX_IDX_BITS; ++idx_bit) {
         printf("\t\t%d", 1 << idx_bit);
     }
     printf("\n");
 
-    printf("Spots/Stride table\n");
-    for (int spots = 2; spots <= MAX_ASSOC; ++spots) {
+    for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
         printf("%d", spots);
         for (int idx_bit = 0; idx_bit <= MAX_IDX_BITS; ++idx_bit) {
-            printf("\t%ld", test(arr, 1 << idx_bit, spots));
+            printf("\t%ld", ss_table[idx_bit][spots]);
         }
         printf("\n");
     }
 
-    // Probing associativity
-    long last = test(arr, 1 << MAX_IDX_BITS, 1);
-    int assoc = 0;
-    for (; assoc <= MAX_ASSOC; ++assoc) {
-        long cur = test(arr, 1 << MAX_IDX_BITS, assoc);
-        if (last * 2 < cur) {
-            assoc--;
-            break;
+    // Assume that L1 data cache is smaller than TLB data cache
+    // Search valuable deviation and select run that fits into smallest array
+    int reference_run = ss_table[1][2];
+    float threshold = 1.1 * reference_run;
+    struct var {
+        int assoc;
+        int sets;
+    } candidate = {MAX_ASSOC, 1 << MAX_IDX_BITS};
+    for (int spots = 1; spots < MAX_ASSOC; ++spots) {
+        for (int idx_bit = 0; idx_bit < MAX_IDX_BITS; ++idx_bit) {
+            if (ss_table[idx_bit][spots + 1] > threshold &&
+                ss_table[idx_bit + 1][spots] > threshold &&
+                ss_table[idx_bit][spots] > threshold) {
+                int sets = 1 << idx_bit;
+                /* printf("Deviation, spots: %d, sets: %d\n", spots, sets); */
+                if (candidate.assoc * candidate.sets > (spots - 1) * sets) {
+                    candidate.assoc = (spots - 1);
+                    candidate.sets = sets;
+                }
+                break;
+            }
         }
-        last = cur;
     }
-    if (!assoc) {
-      printf("Failed to probe associativity\n");
-      return 1;
-    }
-    printf("Supposed associativity: %d\n", assoc);
 
-    // Probing idx bitness
-    last = test(arr, 1 << MAX_IDX_BITS, assoc + 1);
-    int idx_bits = MAX_IDX_BITS - 1;
-    for (; idx_bits > 0; --idx_bits) {
-        long cur = test(arr, 1 << idx_bits, assoc + 1);
-        if (cur * 2 < last) {
-            idx_bits++;
-            break;
-        }
-    }
-    if (!idx_bits) {
-      printf("Failed to probe number of sets\n");
-      return 1;
-    }
-    printf("Supposed number of sets: %d\n", 1 << idx_bits);
-    printf("Supposed cache size(in Kb): %d\n", ((1 << idx_bits) * assoc * LINE_SZ) >> 10);
+    printf("Supposed number of sets: %d\n", candidate.sets);
+    printf("Supposed associative: %d\n", candidate.assoc);
+    printf("Supposed cache size: %d Kb\n", (candidate.sets * candidate.assoc * LINE_SZ) >> 10);
 
     return 0;
 }
