@@ -10,7 +10,7 @@
 #define MAX_IDX_SZ 12 // maximum index address part in bits
 #define MAX_SETS (1 << MAX_IDX_SZ)
 
-#define MAX_STRIDE (MAX_SETS * MAX_LINE_SZ / sizeof(uintptr_t))
+#define MAX_STRIDE ((int) (MAX_SETS * MAX_LINE_SZ / sizeof(uintptr_t)))
 #define MAX_ASSOC 20
 
 #define touch(x) __asm__ volatile ( "" : "+r" (x) )
@@ -76,14 +76,14 @@ int main() {
     // Calculate spots/stride table
     long ss_table[MAX_IDX_SZ * MAX_OFFSET_SZ + 1][MAX_ASSOC + 1];
     for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
-        for (int idx_bit = 1; (1 << idx_bit) <= MAX_STRIDE; ++idx_bit) {
+        for (int idx_bit = 1; (1l << idx_bit) <= MAX_STRIDE; ++idx_bit) {
             ss_table[idx_bit][spots] = test(1 << idx_bit, spots);
         }
     }
 
     printf("Spots/Stride table\n");
     for (int idx_bit = 1; (1 << idx_bit) <= MAX_STRIDE; ++idx_bit) {
-        printf("\t\t%d", 1 << idx_bit);
+        printf("\t%d", 1 << idx_bit);
     }
     printf("\n");
 
@@ -95,10 +95,21 @@ int main() {
         printf("\n");
     }
 
+    long long acc = 0;
+    int cnt = 0;
+    for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
+        acc += ss_table[1][spots] + ss_table[2][spots];
+        cnt += 2;
+    }
+    for (int idx_bit = 1; (1 << idx_bit) <= MAX_STRIDE; ++idx_bit) {
+        acc += ss_table[idx_bit][1] + ss_table[idx_bit][2];
+        cnt += 2;
+    }
+    float threshold = 1.15 * acc / cnt;
+    printf("Deviation threshold: %2f\n", threshold);
+
     // Assume that L1 data cache is smaller than TLB data cache
     // Search valuable deviation and select run that fits into smallest array
-    int reference_run = ss_table[1][2];
-    float threshold = 1.1 * reference_run;
     struct var {
         int assoc;
         int stride; // in sizeof(uintptr_t)
@@ -108,7 +119,6 @@ int main() {
             if (ss_table[idx_bit][spots + 1] > threshold &&
                 ss_table[idx_bit + 1][spots] > threshold &&
                 ss_table[idx_bit][spots] > threshold) {
-                /* printf("Deviation, spots: %d, sets: %d\n", spots, sets); */
                 if (candidate.assoc * candidate.stride > (spots - 1) * (1 << idx_bit)) {
                     candidate.assoc = (spots - 1);
                     candidate.stride = (1 << idx_bit);
