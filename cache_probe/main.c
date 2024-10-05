@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <assert.h>
-#include <sys/time.h>
+#include <time.h>
 
 #define MAX_OFFSET_SZ 8 // maximum offset address part in bits
 #define MAX_LINE_SZ (1 << MAX_OFFSET_SZ) // in bytes
@@ -15,20 +15,18 @@
 
 #define touch(x) __asm__ volatile ( "" : "+r" (x) )
 
-struct timeval getClock() {
-   struct timeval tp;
-   struct timezone tzp;
-
-   gettimeofday(&tp,&tzp);
+struct timespec getClock() {
+   struct timespec tp;
+   clock_gettime(CLOCK_MONOTONIC, &tp);
    return tp;
 }
 
-long diffClock(const struct timeval a, const struct timeval b) {
-   return (a.tv_sec - b.tv_sec) * 1e6 + (a.tv_usec - b.tv_usec);
+long long diffClock(const struct timespec a, const struct timespec b) {
+   return (a.tv_sec - b.tv_sec) * 1e9 + (a.tv_nsec - b.tv_nsec);
 }
 
 // For linux we should run more iterations to compensate non deterministic environment
-#define ITERS 10000
+#define ITERS 1000
 
 long n; // arr size
 uintptr_t* arr;
@@ -36,34 +34,34 @@ uintptr_t* arr;
 #define X10(x) x; x; x; x; x; x; x; x; x; x;
 #define X1000(x) X10(X10(X10(x)));
 
-long test_line_size(int ss, int bs, int spots) {
+long long test_line_size(int ss, int bs, int spots) {
     long m = spots * bs;
     for (long i = 0; i + ss < m; i += bs) {
         arr[i] = (uintptr_t) &arr[i + ss];
         arr[i + ss] = (uintptr_t) &arr[(i + bs) % m];
     }
-    volatile struct timeval start_time = getClock();
+    volatile struct timespec start_time = getClock();
     volatile uintptr_t* cur = (uintptr_t*) arr;
     for (int i = 0; i < ITERS; ++i) {
         X1000(cur = (uintptr_t*) (*cur));
     }
     touch(cur);
-    volatile struct timeval stop_time = getClock();
+    volatile struct timespec stop_time = getClock();
     return diffClock(stop_time, start_time);
 }
 
-long test(int stride_idx, int spots) {
+long long test(int stride_idx, int spots) {
     long m = spots * stride_idx;
     for (long i = 0; i < m; i += stride_idx) {
         arr[i] = (uintptr_t) &arr[(i + m - stride_idx) % m];
     }
-    volatile struct timeval start_time = getClock();
+    volatile struct timespec start_time = getClock();
     volatile uintptr_t* cur = (uintptr_t*) (*arr);
     for (int i = 0; i < ITERS; ++i) {
         X1000(cur = (uintptr_t*) (*cur));
     }
     touch(cur);
-    volatile struct timeval stop_time = getClock();
+    volatile struct timespec stop_time = getClock();
     return diffClock(stop_time, start_time);
 }
 
@@ -74,7 +72,7 @@ int main() {
     printf("n: %ld, arr: %p\n", n, arr);
 
     // Calculate spots/stride table
-    long ss_table[MAX_IDX_SZ * MAX_OFFSET_SZ + 1][MAX_ASSOC + 1];
+    long long ss_table[MAX_IDX_SZ * MAX_OFFSET_SZ + 1][MAX_ASSOC + 1];
     for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
         for (int idx_bit = 1; (1l << idx_bit) <= MAX_STRIDE; ++idx_bit) {
             ss_table[idx_bit][spots] = test(1 << idx_bit, spots);
@@ -90,7 +88,7 @@ int main() {
     for (int spots = 1; spots <= MAX_ASSOC; ++spots) {
         printf("%d", spots);
         for (int idx_bit = 1; (1 << idx_bit) <= MAX_STRIDE; ++idx_bit) {
-            printf("\t%ld", ss_table[idx_bit][spots]);
+            printf("\t%lld", ss_table[idx_bit][spots]);
         }
         printf("\n");
     }
@@ -123,6 +121,7 @@ int main() {
                     candidate.assoc = (spots - 1);
                     candidate.stride = (1 << idx_bit);
                 }
+                // printf("Spots: %d, stride: %d, measure: %d", spots, 1 << idx_bit, spots << idx_bit)
                 break;
             }
         }
@@ -133,9 +132,9 @@ int main() {
     // candidate_cache_line <  real_cache_line => L1 cache hit = 0.5
     // candidate_cache_line >= real_cache_line => L1 cache hit = 0
     int cache_line; // in sizeof(uintptr_t)
-    long last_time = test_line_size(1, candidate.stride, candidate.assoc + 2);
+    long long last_time = test_line_size(1, candidate.stride, candidate.assoc + 2);
     for (cache_line = 2; cache_line <= candidate.stride; cache_line<<=1) {
-        long cur_time = test_line_size(cache_line, candidate.stride, candidate.assoc + 2);
+        long long cur_time = test_line_size(cache_line, candidate.stride, candidate.assoc + 2);
         if (cur_time > last_time * 1.2) {
             break;
         }
