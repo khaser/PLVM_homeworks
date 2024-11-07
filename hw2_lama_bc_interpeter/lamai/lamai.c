@@ -11,9 +11,6 @@
 #define MAX_VSTACK_SZ      10000
 #define MAX_FRAME_STACK_SZ 1000
 
-void* __start_custom_data;
-void* __stop_custom_data;
-
 extern size_t* __gc_stack_top; // points to first uninitialized vstack element
 extern size_t* __gc_stack_bottom;
 
@@ -28,7 +25,9 @@ void check_vstack() {
 }
 
 #define PUSH(val) (*(__gc_stack_top--) = val)
+#define PUSH_REF(val) (PUSH((int) (val)))
 #define POP() (*(++__gc_stack_top))
+#define POP_REF() ((int*) POP())
 #define TOP() (*(__gc_stack_top+1))
 #define ALLOC(n) (__gc_stack_top -= (n))
 #define TRUNK(n) (__gc_stack_top += (n))
@@ -44,6 +43,11 @@ typedef struct {
   int   public_symbols_number;   /* The number of public symbols                   */
   char  buffer[0];
 } bytefile;
+
+/* Gets a string from a string table by an index */
+char* get_string (bytefile *f, int pos) {
+  return &f->string_ptr[pos];
+}
 
 /* Reads a binary bytecode file by name and unpacks it */
 bytefile* read_file (char *fname) {
@@ -95,8 +99,10 @@ int vstack[MAX_VSTACK_SZ];
 
 int binop(char, int, int);
 int* resolve_loc(char loc_type, int id);
+static void *Barray (int n);
 
 int main (int argc, char* argv[]) {
+  // TODO: usage
   bytefile* bf = read_file(argv[1]);
 
   /* Init GC */
@@ -112,25 +118,27 @@ int main (int argc, char* argv[]) {
   char* lds [] = {"LD", "LDA", "ST"};
 
 #define INT    (ip += sizeof (int), *(int*)(ip - sizeof (int)))
+#define REF    ((int*) INT)
 #define BYTE   *ip++
 #define FAIL   failure ("ERROR: invalid opcode %d-%d\n", h, l)
   do {
-    // fprintf(stderr, "%p\n", ip);
     char x = BYTE,
          h = (x & 0xF0) >> 4,
          l = x & 0x0F;
 
+    fprintf(stderr, "%p, %d, %d\n", ip - bf->code_ptr - 1, h, l);
 
     switch (h) {
     case 15:
       goto stop;
 
-    case 0:
+    case 0: {
       /* BINOP */
       int a = UNBOX(POP());
       int b = UNBOX(POP());
       PUSH(BOX(binop(l - 1, b, a)));
       break;
+    }
 
     case 1:
       switch (l) {
@@ -139,22 +147,33 @@ int main (int argc, char* argv[]) {
         PUSH(BOX(INT));
         break;
 
-      case  1:
-        // fprintf (f, "STRING\t%s", STRING);
+      case  1: {
+        /* STRING */
+        PUSH_REF(Bstring(get_string(bf, INT)));
         break;
+      }
 
       case  2:
         // fprintf (f, "SEXP\t%s ", STRING);
         // fprintf (f, "%d", INT);
         break;
 
-      case  3:
-        // fprintf (f, "STI");
+      case  3: {
+        /* STI */
+        int val = POP();
+        int* dest = POP_REF();
+        PUSH(*dest = val);
         break;
+      }
 
-      case  4:
-        // fprintf (f, "STA");
+      case  4: {
+        /* STA */
+        int* arr = POP_REF();
+        int idx = POP();
+        int* val_ptr = POP_REF();
+        PUSH_REF(Bsta(arr, idx, val_ptr));
         break;
+      }
 
       case  5:
         /* JMP */
@@ -162,12 +181,16 @@ int main (int argc, char* argv[]) {
         break;
 
       case  6:
-        // fprintf (f, "END");
+      case  7: {
+        /* END, RET */
+        int ret = POP();
+        TRUNK(cur_frame->locals + cur_frame->args);
+        PUSH(ret);
+        ip = cur_frame->ret_ip;
+        cur_frame++;
+        // TODO: detect frame underflow
         break;
-
-      case  7:
-        // fprintf (f, "RET");
-        break;
+      }
 
       case  8:
         /* DROP */
@@ -175,16 +198,21 @@ int main (int argc, char* argv[]) {
         break;
 
       case  9:
-        // fprintf (f, "DUP");
+        /* DUP */
+        PUSH(TOP());
         break;
 
       case 10:
         // fprintf (f, "SWAP");
         break;
 
-      case 11:
-        // fprintf (f, "ELEM");
+      case 11: {
+        /* ELEM */
+        int idx = POP();
+        int* arr = POP_REF();
+        PUSH_REF(Belem(arr, idx));
         break;
+      }
 
       default:
         FAIL;
@@ -195,9 +223,13 @@ int main (int argc, char* argv[]) {
       /* LD */
       PUSH(*resolve_loc(l, INT));
       break;
-    case 3:
+    case 3: {
       /* LDA */
+      int* val_ptr = resolve_loc(l, INT);
+      PUSH_REF(val_ptr);
+      PUSH_REF(val_ptr);
       break;
+    }
     case 4:
       /* ST */
       *resolve_loc(l, INT) = TOP();
@@ -205,21 +237,23 @@ int main (int argc, char* argv[]) {
     case 5:
       switch (l) {
       case  0:
-      case  1:
+      case  1: {
         /* CJMPz/CJMPnz */
         int dest = INT;
         if (1 ^ l ^ !!UNBOX(POP())) {
           ip = bf->code_ptr + dest;
         }
         break;
+      }
 
-      case  2:
+      case  2: {
         /* BEGIN */
         int args = INT;
         int locals = INT;
         ALLOC(locals);
         cur_frame->locals = locals;
         break;
+      }
 
       case  3:
         // fprintf (f, "CBEGIN\t%d ", INT);
@@ -245,24 +279,55 @@ int main (int argc, char* argv[]) {
         // fprintf (f, "CALLC\t%d", INT);
         break;
 
-      case  6:
-        // fprintf (f, "CALL\t0x%.8x ", INT);
-        // fprintf (f, "%d", INT);
-        break;
+      case  6: {
+        /* CALL */
+        int dest = INT;
+        int args = INT;
 
-      case  7:
-        // fprintf (f, "TAG\t%s ", STRING);
-        // fprintf (f, "%d", INT);
-        break;
+        /* reverse call arguments on stack */
+        int* rev_l = __gc_stack_top + 1;
+        int* rev_r = __gc_stack_top + 1 + args;
+        for (; rev_l < rev_r; ++rev_l, --rev_r) {
+          /* swap trick */
+          *rev_l = *rev_l ^ *rev_r;
+          *rev_r = *rev_l ^ *rev_r;
+          *rev_l = *rev_l ^ *rev_r;
+        }
 
-      case  8:
-        // fprintf (f, "ARRAY\t%d", INT);
-        break;
+        cur_frame--;
+        cur_frame->ret_ip = ip;
+        cur_frame->vstack_base = __gc_stack_top;
+        cur_frame->args = args;
+        ALLOC(args);
 
-      case  9:
-        // fprintf (f, "FAIL\t%d", INT);
-        // fprintf (f, "%d", INT);
+        ip = bf->code_ptr + dest;
         break;
+      }
+
+      case  7: {
+        /* TAG */
+        char* tag = get_string(bf, INT);
+        int args = BOX(INT);
+        int* sexp = POP_REF();
+        PUSH(Btag(sexp, LtagHash(tag), args));
+        break;
+      }
+
+      case  8: {
+        /* ARRAY */
+        int sz = BOX(INT);
+        int* arr = POP_REF();
+        PUSH(Barray_patt(arr, sz));
+        break;
+      }
+
+      case  9: {
+        /* FAIL */
+        int line = INT;
+        int col = INT;
+        Bmatch_failure(POP_REF(), argv[1], line, col);
+        break;
+      }
 
       case 10:
         /* LINE */
@@ -281,25 +346,28 @@ int main (int argc, char* argv[]) {
     case 7: {
       switch (l) {
       case 0:
-        /* READ */
+        /* Lread */
         PUSH(Lread());
         break;
 
       case 1:
-        /* WRITE */
+        /* Lwrite */
         PUSH(Lwrite(POP()));
         break;
 
       case 2:
-        // fprintf (f, "CALL\tLlength");
+        /* Llength */
+        PUSH(Llength(POP_REF()));
         break;
 
       case 3:
-        // fprintf (f, "CALL\tLstring");
+        /* Lstring */
+        PUSH_REF(Lstring(POP_REF()));
         break;
 
       case 4:
-        // fprintf (f, "CALL\tBarray\t%d", INT);
+        int sz = BOX(INT);
+        PUSH_REF(Barray(sz));
         break;
 
       default:
@@ -370,3 +438,20 @@ int* resolve_loc(char loc_type, int id) {
     failure("Unsupported memory operation operand type: %d\n", loc_type);
   }
 }
+
+/* Copy-pasted from runtime, but migrated into local virtual stack */
+static void *Barray (int n) {
+  int     i, ai;
+  data   *r;
+
+  r = (data *)alloc_array(n);
+
+  for (i = n - 1; i >= 0; --i) {
+    ai                      = POP();
+    ((int *)r->contents)[i] = ai;
+  }
+
+  return r->contents;
+}
+
+// TODO: other structures operations
