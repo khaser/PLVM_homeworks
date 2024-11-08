@@ -11,7 +11,7 @@
 #define MAX_VSTACK_SZ      10000
 #define MAX_FRAME_STACK_SZ 10000
 
-extern size_t* __gc_stack_top; // points to first uninitialized vstack element
+extern size_t* __gc_stack_top; /* points to first uninitialized vstack element */
 extern size_t* __gc_stack_bottom;
 
 #define CHECK() do {                                                   \

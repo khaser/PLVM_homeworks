@@ -42,6 +42,10 @@ unit_tests:
 negative_scenarios_tests:
 	$(MAKE) -C runtime negative_tests
 
+performance:
+	$(MAKE) -C performance check
+.PHONY: performance
+
 clean:
 	$(MAKE) clean -C src
 	$(MAKE) clean -C runtime
