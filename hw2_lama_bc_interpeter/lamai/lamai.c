@@ -41,12 +41,12 @@ typedef struct {
 } bytefile;
 
 /* Gets a string from a string table by an index */
-char* get_string(bytefile* f, int pos) {
+static char* get_string(bytefile* f, int pos) {
   return &f->string_ptr[pos];
 }
 
 /* Reads a binary bytecode file by name and unpacks it */
-bytefile* read_file(char* fname) {
+static bytefile* read_file(char* fname) {
   FILE* f = fopen(fname, "rb");
   long size;
   bytefile* file;
@@ -93,8 +93,8 @@ struct frame* const main_frame = fstack + MAX_FRAME_STACK_SZ - 1;
 
 int vstack[MAX_VSTACK_SZ];
 
-int binop(char, int, int);
-int* resolve_loc(struct frame* cur_frame, char loc_type, int id);
+static int binop(char, int, int);
+static int* resolve_loc(struct frame* cur_frame, char loc_type, int id);
 static void* Barray(int n);
 static void* Bsexp(int n, int tag);
 static void* Bclosure(int n, void* entry);
