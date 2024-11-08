@@ -5,9 +5,9 @@ extern int   Lread ();
 extern int   Lwrite (int n);
 extern int   Llength (void *p);
 extern void* Lstring (void *p);
+extern int   LtagHash (char *s);
 
 extern void* Bstring(void *p);
-extern int   LtagHash (char *s);
 extern void* Bsta (void *v, int i, void *x);
 extern void* Belem (void *p, int i);
 extern int   Btag (void *d, int t, int n);

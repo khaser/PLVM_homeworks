@@ -2,17 +2,23 @@ DEBUG_FILES=stack-dump-before data-dump-before extra-roots-dump-before heap-dump
 TESTS=$(sort $(filter-out test111, $(basename $(wildcard test*.lama))))
 
 LAMAC=../src/lamac
+LAMAI=../lamai/lamai
 
 .PHONY: check $(TESTS)
 
 
-check: ctest111 $(TESTS)
+check: $(TESTS)
 
 $(TESTS): %: %.lama
 	@echo "regression/$@"
-	@cat $@.input | LAMA=../runtime $(LAMAC) -i $< > $@.log && diff $@.log orig/$@.log
-	@cat $@.input | LAMA=../runtime $(LAMAC) -ds -s $< > $@.log && diff $@.log orig/$@.log
-	@LAMA=../runtime $(LAMAC) $< && cat $@.input | ./$@ > $@.log && diff $@.log orig/$@.log
+	@# lamai testing
+	@LAMA=../runtime $(LAMAC) -b $<
+	@cat $@.input | $(LAMAI) $@.bc > $@.log && diff $@.log orig/$@.log
+	@rm $@.bc
+	@# Upstream ocaml compiler/interpreters testing
+	@# @cat $@.input | LAMA=../runtime $(LAMAC) -i $< > $@.log && diff $@.log orig/$@.log
+	@# @cat $@.input | LAMA=../runtime $(LAMAC) -ds -s $< > $@.log && diff $@.log orig/$@.log
+	@# @LAMA=../runtime $(LAMAC) $< && cat $@.input | ./$@ > $@.log && diff $@.log orig/$@.log
 
 ctest111:
 	@echo "regression/test111"
