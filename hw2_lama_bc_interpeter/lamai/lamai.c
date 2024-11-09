@@ -123,237 +123,232 @@ int main (int argc, char* argv[]) {
          h = (x & 0xF0) >> 4,
          l = x & 0x0F;
 
-    switch (h) {
-    case BC_STOP:
-      goto stop;
+    switch (x) {
+    case BC_CONST:
+      int val = INT;
+      PUSH(BOX(val));
+      break;
 
-    case BC_BINOP: {
-      int a = UNBOX(POP());
-      int b = UNBOX(POP());
-      PUSH(BOX(binop(l - 1, b, a)));
+    case BC_STRING: {
+      PUSH_REF(Bstring(get_string(bf, INT)));
       break;
     }
 
-    case BC_LD:
-      PUSH(*resolve_loc(cur_frame, l, INT));
+    case BC_SEXP:
+      char* tag = get_string(bf, INT);
+      int sz = INT;
+      int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
+      PUSH_REF(bsexp);
       break;
 
-    case BC_LDA: {
-      int* val_ptr = resolve_loc(cur_frame, l, INT);
-      PUSH_REF(val_ptr);
-      PUSH_REF(val_ptr);
+    case BC_STI: {
+      int val = POP();
+      int* dest = POP_REF();
+      PUSH(*dest = val);
       break;
     }
 
-    case BC_ST:
-      *resolve_loc(cur_frame, l, INT) = TOP();
+    case BC_STA: {
+      int* arr = POP_REF();
+      int idx = POP();
+      int* val_ptr = POP_REF();
+      PUSH_REF(Bsta(arr, idx, val_ptr));
+      break;
+    }
+
+    case BC_JMP:
+      ip = bf->code_ptr + INT;
       break;
 
-    case BC_PATT: {
-      int* scrut = POP_REF();
-      if (l == 0) {
-        /* String */
-        int* str = POP_REF();
-        PUSH(Bstring_patt(scrut, str));
-      } else if (1 <= l && l <= 6) {
-        /* Other patterns */
-        const int (*patt_fn[]) (void*) = {
-          Bstring_tag_patt,
-          Barray_tag_patt,
-          Bsexp_tag_patt,
-          Bboxed_patt,
-          Bunboxed_patt,
-          Bclosure_tag_patt,
-        };
-        PUSH(patt_fn[l - 1](scrut));
-      } else {
-        failure("Unexpected pattern tag type\n");
+    case BC_END:
+    case BC_RET: {
+      int ret = POP();
+      TRUNC(cur_frame->locals + cur_frame->args + cur_frame->is_closure);
+      PUSH(ret);
+      ip = cur_frame->ret_ip;
+      if ((cur_frame++) == main_frame) {
+        goto stop;
       }
+      break;
+    }
+
+    case BC_DROP:
+      POP();
+      break;
+
+    case BC_DUP:
+      PUSH(TOP());
+      break;
+
+    case BC_SWAP:
+      int a = POP();
+      int b = POP();
+      PUSH(b);
+      PUSH(a);
+      break;
+
+    case BC_ELEM: {
+      int idx = POP();
+      int* arr = POP_REF();
+      PUSH_REF(Belem(arr, idx));
+      break;
+    }
+
+    case BC_CJMPZ:
+    case BC_CJMPNZ: {
+      int dest = INT;
+      if (1 ^ l ^ !!UNBOX(POP())) {
+        ip = bf->code_ptr + dest;
+      }
+      break;
+    }
+
+    case BC_BEGIN:
+    case BC_CBEGIN: {
+      int args = INT;
+      int locals = INT;
+      ALLOC(locals);
+      cur_frame->locals = locals;
+      break;
+    }
+
+    case BC_CLOSURE: {
+      int* dest = REF;
+      int args = INT;
+      for (int i = 0; i < args; ++i) {
+        char loc_t = BYTE;
+        int arg = INT;
+        PUSH(*resolve_loc(cur_frame, loc_t, arg));
+      }
+      int* cls = Bclosure(args, dest);
+      PUSH_REF(cls);
+      break;
+    }
+
+    {
+      int args, dest;
+      int* cls;
+
+    case BC_CALLC:
+      args = INT;
+      cls = (int*) *(__gc_stack_top + 1 + args);
+      goto call;
+
+    case BC_CALL:
+      dest = INT;
+      args = INT;
+      cls = 0;
+
+    call:
+      cur_frame--;
+      cur_frame->ret_ip = ip;
+      cur_frame->vstack_base = __gc_stack_top;
+      cur_frame->args = args;
+      cur_frame->is_closure = !!cls;
+      /*
+      CLOSURE?
+      ARG 1
+      ARG 2
+      LOCAL 1 <- vstack_base
+      LOCAL 2
+      RET_VAL
+      */
+
+      ip = bf->code_ptr + (cls ? *cls : dest);
+      break;
+    }
+
+    case BC_TAG: {
+      char* tag = get_string(bf, INT);
+      int args = INT;
+      int* sexp = POP_REF();
+      PUSH(Btag(sexp, LtagHash(tag), BOX(args)));
+      break;
+    }
+
+    case BC_ARRAY: {
+      int sz = INT;
+      int* arr = POP_REF();
+      PUSH(Barray_patt(arr, BOX(sz)));
+      break;
+    }
+
+    case BC_FAIL: {
+      int line = INT;
+      int col = INT;
+      Bmatch_failure(POP_REF(), argv[1], line, col);
+      break;
+    }
+
+    case BC_LINE:
+      INT;
+      break;
+
+    case BC_LREAD:
+      PUSH(Lread());
+      break;
+
+    case BC_LWRITE:
+      PUSH(Lwrite(POP()));
+      break;
+
+    case BC_LLENGTH:
+      PUSH(Llength(POP_REF()));
+      break;
+
+    case BC_LSTRING:
+      PUSH_REF(Lstring(POP_REF()));
+      break;
+
+    case BC_BARRAY:
+      int* arr = Barray(INT);
+      PUSH_REF(arr);
+      break;
+
+    case BC_PATT_STR: {
+      int* scrut = POP_REF();
+      int* str = POP_REF();
+      PUSH(Bstring_patt(scrut, str));
       break;
     }
 
     default:
-      switch (x) {
-      case BC_CONST:
-        int val = INT;
-        PUSH(BOX(val));
-        break;
+      switch (h) {
 
-      case BC_STRING: {
-        PUSH_REF(Bstring(get_string(bf, INT)));
-        break;
-      }
+      case BC_STOP:
+        goto stop;
 
-      case BC_SEXP:
-        char* tag = get_string(bf, INT);
-        int sz = INT;
-        int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
-        PUSH_REF(bsexp);
-        break;
-
-      case BC_STI: {
-        int val = POP();
-        int* dest = POP_REF();
-        PUSH(*dest = val);
+      case BC_BINOP: {
+        int a = UNBOX(POP());
+        int b = UNBOX(POP());
+        PUSH(BOX(binop(l - 1, b, a)));
         break;
       }
 
-      case BC_STA: {
-        int* arr = POP_REF();
-        int idx = POP();
-        int* val_ptr = POP_REF();
-        PUSH_REF(Bsta(arr, idx, val_ptr));
+      case BC_LD:
+        PUSH(*resolve_loc(cur_frame, l, INT));
+        break;
+
+      case BC_LDA: {
+        int* val_ptr = resolve_loc(cur_frame, l, INT);
+        PUSH_REF(val_ptr);
+        PUSH_REF(val_ptr);
         break;
       }
 
-      case BC_JMP:
-        ip = bf->code_ptr + INT;
+      case BC_ST:
+        *resolve_loc(cur_frame, l, INT) = TOP();
         break;
 
-      case BC_END:
-      case BC_RET: {
-        int ret = POP();
-        TRUNC(cur_frame->locals + cur_frame->args + cur_frame->is_closure);
-        PUSH(ret);
-        ip = cur_frame->ret_ip;
-        if ((cur_frame++) == main_frame) {
-          goto stop;
+      case BC_PATT: {
+        int* scrut = POP_REF();
+        if (0 < l && l - 1 < sizeof(PATT_FNS) / sizeof(PATT_FNS[0])) {
+          PUSH(PATT_FNS[l - 1](scrut));
+        } else {
+          failure("Unexpected pattern tag type\n");
         }
         break;
       }
-
-      case BC_DROP:
-        POP();
-        break;
-
-      case BC_DUP:
-        PUSH(TOP());
-        break;
-
-      case BC_SWAP:
-        int a = POP();
-        int b = POP();
-        PUSH(b);
-        PUSH(a);
-        break;
-
-      case BC_ELEM: {
-        int idx = POP();
-        int* arr = POP_REF();
-        PUSH_REF(Belem(arr, idx));
-        break;
-      }
-
-      case BC_CJMPZ:
-      case BC_CJMPNZ: {
-        int dest = INT;
-        if (1 ^ l ^ !!UNBOX(POP())) {
-          ip = bf->code_ptr + dest;
-        }
-        break;
-      }
-
-      case BC_BEGIN:
-      case BC_CBEGIN: {
-        int args = INT;
-        int locals = INT;
-        ALLOC(locals);
-        cur_frame->locals = locals;
-        break;
-      }
-
-      case BC_CLOSURE: {
-        int* dest = REF;
-        int args = INT;
-        for (int i = 0; i < args; ++i) {
-          char loc_t = BYTE;
-          int arg = INT;
-          PUSH(*resolve_loc(cur_frame, loc_t, arg));
-        }
-        int* cls = Bclosure(args, dest);
-        PUSH_REF(cls);
-        break;
-      }
-
-      {
-        int args, dest;
-        int* cls;
-
-      case BC_CALLC:
-        args = INT;
-        cls = (int*) *(__gc_stack_top + 1 + args);
-        goto call;
-
-      case BC_CALL:
-        dest = INT;
-        args = INT;
-        cls = 0;
-
-      call:
-        cur_frame--;
-        cur_frame->ret_ip = ip;
-        cur_frame->vstack_base = __gc_stack_top;
-        cur_frame->args = args;
-        cur_frame->is_closure = !!cls;
-        /*
-        CLOSURE?
-        ARG 1
-        ARG 2
-        LOCAL 1 <- vstack_base
-        LOCAL 2
-        RET_VAL
-        */
-
-        ip = bf->code_ptr + (cls ? *cls : dest);
-        break;
-      }
-
-      case BC_TAG: {
-        char* tag = get_string(bf, INT);
-        int args = INT;
-        int* sexp = POP_REF();
-        PUSH(Btag(sexp, LtagHash(tag), BOX(args)));
-        break;
-      }
-
-      case BC_ARRAY: {
-        int sz = INT;
-        int* arr = POP_REF();
-        PUSH(Barray_patt(arr, BOX(sz)));
-        break;
-      }
-
-      case BC_FAIL: {
-        int line = INT;
-        int col = INT;
-        Bmatch_failure(POP_REF(), argv[1], line, col);
-        break;
-      }
-
-      case BC_LINE:
-        INT;
-        break;
-
-      case BC_LREAD:
-        PUSH(Lread());
-        break;
-
-      case BC_LWRITE:
-        PUSH(Lwrite(POP()));
-        break;
-
-      case BC_LLENGTH:
-        PUSH(Llength(POP_REF()));
-        break;
-
-      case BC_LSTRING:
-        PUSH_REF(Lstring(POP_REF()));
-        break;
-
-      case BC_BARRAY:
-        int* arr = Barray(INT);
-        PUSH_REF(arr);
-        break;
 
       default:
         FAIL;
