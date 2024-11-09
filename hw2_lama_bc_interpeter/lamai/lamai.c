@@ -7,6 +7,7 @@
 #include "../runtime/gc.h"
 #include "../runtime/runtime.h"
 #include "runtime_externs.h"
+#include "sm_encoding.h"
 
 #define MAX_VSTACK_SZ      10000
 #define MAX_FRAME_STACK_SZ 10000
@@ -118,56 +119,86 @@ int main (int argc, char* argv[]) {
 #define BYTE   *ip++
 #define FAIL   failure ("ERROR: invalid opcode %d-%d\n", h, l)
   do {
-    char x = BYTE,
+    unsigned char x = BYTE,
          h = (x & 0xF0) >> 4,
          l = x & 0x0F;
 
-    // fprintf(stderr, "%p,\t%d,\t%d\n", ip - bf->code_ptr - 1, h, l);
-
     switch (h) {
-    case 15:
+    case BC_STOP:
       goto stop;
 
-    case 0: {
-      /* BINOP */
+    case BC_BINOP: {
       int a = UNBOX(POP());
       int b = UNBOX(POP());
       PUSH(BOX(binop(l - 1, b, a)));
       break;
     }
 
-    case 1:
-      switch (l) {
-      case  0:
-        /* CONST */
+    case BC_LD:
+      PUSH(*resolve_loc(cur_frame, l, INT));
+      break;
+
+    case BC_LDA: {
+      int* val_ptr = resolve_loc(cur_frame, l, INT);
+      PUSH_REF(val_ptr);
+      PUSH_REF(val_ptr);
+      break;
+    }
+
+    case BC_ST:
+      *resolve_loc(cur_frame, l, INT) = TOP();
+      break;
+
+    case BC_PATT: {
+      int* scrut = POP_REF();
+      if (l == 0) {
+        /* String */
+        int* str = POP_REF();
+        PUSH(Bstring_patt(scrut, str));
+      } else if (1 <= l && l <= 6) {
+        /* Other patterns */
+        const int (*patt_fn[]) (void*) = {
+          Bstring_tag_patt,
+          Barray_tag_patt,
+          Bsexp_tag_patt,
+          Bboxed_patt,
+          Bunboxed_patt,
+          Bclosure_tag_patt,
+        };
+        PUSH(patt_fn[l - 1](scrut));
+      } else {
+        failure("Unexpected pattern tag type\n");
+      }
+      break;
+    }
+
+    default:
+      switch (x) {
+      case BC_CONST:
         int val = INT;
         PUSH(BOX(val));
         break;
 
-      case  1: {
-        /* STRING */
+      case BC_STRING: {
         PUSH_REF(Bstring(get_string(bf, INT)));
         break;
       }
 
-      case  2:
-        /* SEXP */
+      case BC_SEXP:
         char* tag = get_string(bf, INT);
         int sz = INT;
         int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
         PUSH_REF(bsexp);
         break;
 
-      case  3: {
-        /* STI */
+      case BC_STI: {
         int val = POP();
         int* dest = POP_REF();
         PUSH(*dest = val);
         break;
       }
 
-      case  4: {
-        /* STA */
+      case BC_STA: {
         int* arr = POP_REF();
         int idx = POP();
         int* val_ptr = POP_REF();
@@ -175,14 +206,12 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  5:
-        /* JMP */
+      case BC_JMP:
         ip = bf->code_ptr + INT;
         break;
 
-      case  6:
-      case  7: {
-        /* END, RET */
+      case BC_END:
+      case BC_RET: {
         int ret = POP();
         TRUNC(cur_frame->locals + cur_frame->args + cur_frame->is_closure);
         PUSH(ret);
@@ -193,57 +222,30 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  8:
-        /* DROP */
+      case BC_DROP:
         POP();
         break;
 
-      case  9:
-        /* DUP */
+      case BC_DUP:
         PUSH(TOP());
         break;
 
-      case 10:
-        /* SWAP */
+      case BC_SWAP:
         int a = POP();
         int b = POP();
         PUSH(b);
         PUSH(a);
         break;
 
-      case 11: {
-        /* ELEM */
+      case BC_ELEM: {
         int idx = POP();
         int* arr = POP_REF();
         PUSH_REF(Belem(arr, idx));
         break;
       }
 
-      default:
-        FAIL;
-      }
-      break;
-
-    case 2:
-      /* LD */
-      PUSH(*resolve_loc(cur_frame, l, INT));
-      break;
-    case 3: {
-      /* LDA */
-      int* val_ptr = resolve_loc(cur_frame, l, INT);
-      PUSH_REF(val_ptr);
-      PUSH_REF(val_ptr);
-      break;
-    }
-    case 4:
-      /* ST */
-      *resolve_loc(cur_frame, l, INT) = TOP();
-      break;
-    case 5:
-      switch (l) {
-      case  0:
-      case  1: {
-        /* CJMPz/CJMPnz */
+      case BC_CJMPZ:
+      case BC_CJMPNZ: {
         int dest = INT;
         if (1 ^ l ^ !!UNBOX(POP())) {
           ip = bf->code_ptr + dest;
@@ -251,9 +253,8 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  2:
-      case  3: {
-        /* BEGIN */
+      case BC_BEGIN:
+      case BC_CBEGIN: {
         int args = INT;
         int locals = INT;
         ALLOC(locals);
@@ -261,8 +262,7 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  4: {
-        /* CLOSURE */
+      case BC_CLOSURE: {
         int* dest = REF;
         int args = INT;
         for (int i = 0; i < args; ++i) {
@@ -276,16 +276,15 @@ int main (int argc, char* argv[]) {
       }
 
       {
-        /* CALL/CALLC */
         int args, dest;
         int* cls;
 
-      case  5:
+      case BC_CALLC:
         args = INT;
         cls = (int*) *(__gc_stack_top + 1 + args);
         goto call;
 
-      case  6:
+      case BC_CALL:
         dest = INT;
         args = INT;
         cls = 0;
@@ -309,8 +308,7 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  7: {
-        /* TAG */
+      case BC_TAG: {
         char* tag = get_string(bf, INT);
         int args = INT;
         int* sexp = POP_REF();
@@ -318,78 +316,41 @@ int main (int argc, char* argv[]) {
         break;
       }
 
-      case  8: {
-        /* ARRAY_PATT */
+      case BC_ARRAY: {
         int sz = INT;
         int* arr = POP_REF();
         PUSH(Barray_patt(arr, BOX(sz)));
         break;
       }
 
-      case  9: {
-        /* FAIL */
+      case BC_FAIL: {
         int line = INT;
         int col = INT;
         Bmatch_failure(POP_REF(), argv[1], line, col);
         break;
       }
 
-      case 10:
-        /* LINE */
+      case BC_LINE:
         INT;
         break;
 
-      default:
-        FAIL;
-      }
-      break;
-
-    case 6:
-      /* PATT */
-      int* scrut = POP_REF();
-      if (l == 0) {
-        /* String */
-        int* str = POP_REF();
-        PUSH(Bstring_patt(scrut, str));
-      } else if (1 <= l && l <= 6) {
-        const int (*patt_fn[]) (void*) = {
-          Bstring_tag_patt,
-          Barray_tag_patt,
-          Bsexp_tag_patt,
-          Bboxed_patt,
-          Bunboxed_patt,
-          Bclosure_tag_patt,
-        };
-        PUSH(patt_fn[l - 1](scrut));
-      } else {
-        failure("Unexpected pattern tag type\n");
-      }
-      break;
-
-    case 7: {
-      switch (l) {
-      case 0:
-        /* Lread */
+      case BC_LREAD:
         PUSH(Lread());
         break;
 
-      case 1:
-        /* Lwrite */
+      case BC_LWRITE:
         PUSH(Lwrite(POP()));
         break;
 
-      case 2:
-        /* Llength */
+      case BC_LLENGTH:
         PUSH(Llength(POP_REF()));
         break;
 
-      case 3:
-        /* Lstring */
+      case BC_LSTRING:
         PUSH_REF(Lstring(POP_REF()));
         break;
 
-      case 4:
-        /* Barray */
+      case BC_BARRAY:
         int* arr = Barray(INT);
         PUSH_REF(arr);
         break;
@@ -398,12 +359,6 @@ int main (int argc, char* argv[]) {
         FAIL;
       }
     }
-    break;
-
-    default:
-      FAIL;
-    }
-
     CHECK();
   }
   while (1);
@@ -413,54 +368,42 @@ int main (int argc, char* argv[]) {
 }
 
 int binop(char opcode, int a, int b) {
-  if (opcode == 0) {
-    return a + b;
-  } else if (opcode == 1)  {
-    return a - b;
-  } else if (opcode == 2)  {
-    return a * b;
-  } else if (opcode == 3)  {
-    return a / b;
-  } else if (opcode == 4)  {
-    return a % b;
-  } else if (opcode == 5)  {
-    return a < b;
-  } else if (opcode == 6)  {
-    return a <= b;
-  } else if (opcode == 7)  {
-    return a > b;
-  } else if (opcode == 8)  {
-    return a >= b;
-  } else if (opcode == 9)  {
-    return a == b;
-  } else if (opcode == 10) {
-    return a != b;
-  } else if (opcode == 11) {
-    return a && b;
-  } else if (opcode == 12) {
-    return a || b;
-  } else {
-    failure("Unsupported opcode for binary operation: %d\n", opcode);
+    const int BINOP_COUNTER_START = __COUNTER__;
+#define BINOP(op) case (__COUNTER__ - BINOP_COUNTER_START - 1): return a op b; break;
+  switch (opcode) {
+    BINOP(+);
+    BINOP(-);
+    BINOP(*);
+    BINOP(/);
+    BINOP(%);
+    BINOP(<);
+    BINOP(<=);
+    BINOP(>);
+    BINOP(>=);
+    BINOP(==);
+    BINOP(!=);
+    BINOP(&&);
+    BINOP(||);
+    default:
+      failure("Unsupported opcode for binary operation: %d\n", opcode);
   }
+#undef BINOP
 }
 
 
 int* resolve_loc(struct frame* cur_frame, char loc_type, int idx) {
-  if (loc_type == 0) {
-    /* GLOBAL */
-    return __gc_stack_bottom - 1 - idx;
-  } else if (loc_type == 1) {
-    /* LOCAL */
-    return cur_frame->vstack_base - idx;
-  } else if (loc_type == 2) {
-    /* ARGUMENT */
-    return cur_frame->args + cur_frame->vstack_base - idx;
-  } else if (loc_type == 3) {
-    /* CAPTURED */
-    int* cls = *(int**)(cur_frame->args + cur_frame->vstack_base + 1);
-    return cls + 1 + idx;
-  } else {
-    failure("Unsupported memory operation operand type: %d\n", loc_type);
+  switch (loc_type) {
+    case GLOBAL:
+      return __gc_stack_bottom - 1 - idx;
+    case LOCAL:
+      return cur_frame->vstack_base - idx;
+    case ARGUMENT:
+      return cur_frame->args + cur_frame->vstack_base - idx;
+    case CAPTURED:
+      int* cls = *(int**)(cur_frame->args + cur_frame->vstack_base + 1);
+      return cls + 1 + idx;
+    default:
+      failure("Unsupported memory operation operand type: %d\n", loc_type);
   }
 }
 
