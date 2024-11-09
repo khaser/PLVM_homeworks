@@ -15,19 +15,19 @@
 extern size_t* __gc_stack_top; /* points to first uninitialized vstack element */
 extern size_t* __gc_stack_bottom;
 
-#define CHECK() do {                                                   \
-  size_t vstack_size = __gc_stack_bottom - __gc_stack_top;             \
-  (vstack_size < 0             && (failure("vstack underflow\n"), 42)) || \
-  (vstack_size > MAX_VSTACK_SZ && (failure("vstack overflow\n"), 228));    \
-  } while (0);
+#define CHECK_UNDERFLOW() (__gc_stack_bottom - __gc_stack_top < 0 && (failure("vstack underflow\n"), 42))
+#define CHECK_OVERFLOW() (__gc_stack_bottom - __gc_stack_top > MAX_VSTACK_SZ && (failure("vstack overflow\n"), 228))
 
-#define PUSH(val) (*(__gc_stack_top--) = val)
-#define PUSH_REF(val) (PUSH((int) (val)))
-#define POP() (*(++__gc_stack_top))
-#define POP_REF() ((int*) POP())
+#define PUSH(val) (CHECK_OVERFLOW(), *(__gc_stack_top--) = val)
+#define PUSH_REF(val) PUSH((int) (val))
+#define POP() (__gc_stack_top++, CHECK_UNDERFLOW(), *__gc_stack_top)
+#define POP_REF() (int*) POP()
 #define TOP() (*(__gc_stack_top+1))
-#define ALLOC(n) (__gc_stack_top -= (n))
-#define TRUNC(n) (__gc_stack_top += (n))
+#define ALLOC(n) do { __gc_stack_top -= (n); CHECK_OVERFLOW(); } while (0)
+#define TRUNC(n) do { \
+                      __gc_stack_top += (n); CHECK_UNDERFLOW();          \
+                      memset(__gc_stack_top - (n - 1), 0, n * sizeof(size_t)); \
+                 } while (0)
 
 /* The unpacked representation of bytecode file */
 typedef struct {
@@ -354,7 +354,6 @@ int main (int argc, char* argv[]) {
         FAIL;
       }
     }
-    CHECK();
   }
   while (1);
   stop:
