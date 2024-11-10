@@ -35,6 +35,7 @@ typedef struct {
   int*  public_ptr;              /* A pointer to the beginning of publics table    */
   char* code_ptr;                /* A pointer to the bytecode itself               */
   int*  global_ptr;              /* A pointer to the global area                   */
+  int   code_size;               /* The size (in bytes) of the bytecode section    */
   int   stringtab_size;          /* The size (in bytes) of the string table        */
   int   global_area_size;        /* The size (in words) of global area             */
   int   public_symbols_number;   /* The number of public symbols                   */
@@ -43,7 +44,11 @@ typedef struct {
 
 /* Gets a string from a string table by an index */
 static char* get_string(bytefile* f, int pos) {
-  return &f->string_ptr[pos];
+  if (0 <= pos && pos < f->stringtab_size) {
+    return &f->string_ptr[pos];
+  } else {
+    failure("String offset out of bounds.\nRequested string offset: %d\nStringtab size: %d\n", pos);
+  }
 }
 
 /* Reads a binary bytecode file by name and unpacks it */
@@ -60,24 +65,36 @@ static bytefile* read_file(char* fname) {
     failure("%s\n", strerror(errno));
   }
 
-  file = (bytefile*) malloc(sizeof(int*)*4 + (size = ftell (f)));
+  file = (bytefile*) malloc(sizeof(int*)*4 + sizeof(int) + (size = ftell (f)));
 
   if (file == 0) {
-    failure("*** FAILURE: unable to allocate memory.\n");
+    failure("Unable to allocate memory.\n");
   }
 
   rewind(f);
 
   if (size != fread(&file->stringtab_size, 1, size, f)) {
-    failure ("%s\n", strerror(errno));
+    failure("%s\n", strerror(errno));
   }
 
   fclose(f);
 
-  file->string_ptr  = &file->buffer[file->public_symbols_number * 2 * sizeof(int)];
-  file->public_ptr  = (int*) file->buffer;
-  file->code_ptr    = &file->string_ptr[file->stringtab_size];
-  file->global_ptr  = (int*) malloc (file->global_area_size * sizeof(int));
+  int stringtab_offset = file->public_symbols_number * 2 * sizeof(int);
+  if (stringtab_offset < size) {
+    file->string_ptr = file->buffer + file->public_symbols_number * 2 * sizeof(int);
+  } else {
+    failure("String table can't be found in file.\nRecognized string offset: %d,\nfile size: %d", \
+            stringtab_offset, size);
+  }
+  file->public_ptr = (int*) file->buffer;
+  int code_offset = stringtab_offset + file->stringtab_size;
+  if (code_offset < size) {
+    file->code_ptr = file->buffer + code_offset;
+    file->code_size = size - code_offset + 1;
+  } else {
+    failure("Code section can't be found in file.\nRecognized code offset: %d,\nfile size: %d", \
+            code_offset, size);
+  }
 
   return file;
 }
@@ -114,29 +131,33 @@ int main (int argc, char* argv[]) {
 
   char* ip     = bf->code_ptr;
 
-#define INT    (ip += sizeof (int), *(int*)(ip - sizeof (int)))
-#define REF    ((int*) INT)
-#define BYTE   *ip++
-#define FAIL   failure ("ERROR: invalid opcode %d-%d\n", h, l)
+#define CHECK_IP() (bf->code_ptr <= ip && ip < bf->code_ptr + bf->code_size) || \
+                     (failure("Instruction pointer outer of code bounds.\n" \
+                              "IP: %p\nCode start: %p\nCode end: %p\n", \
+                              ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42)
+#define INT()    (CHECK_IP(), ip += sizeof (int), *(int*)(ip - sizeof (int)))
+#define REF()    ((int*) INT())
+#define BYTE()   (CHECK_IP(), *ip++)
+#define FAIL()   failure ("Invalid opcode %d-%d\n", h, l)
   do {
-    unsigned char x = BYTE,
+    unsigned char x = BYTE(),
          h = (x & 0xF0) >> 4,
          l = x & 0x0F;
 
     switch (x) {
     case BC_CONST:
-      int val = INT;
+      int val = INT();
       PUSH(BOX(val));
       break;
 
     case BC_STRING: {
-      PUSH_REF(Bstring(get_string(bf, INT)));
+      PUSH_REF(Bstring(get_string(bf, INT())));
       break;
     }
 
     case BC_SEXP:
-      char* tag = get_string(bf, INT);
-      int sz = INT;
+      char* tag = get_string(bf, INT());
+      int sz = INT();
       int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
       PUSH_REF(bsexp);
       break;
@@ -157,7 +178,7 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_JMP:
-      ip = bf->code_ptr + INT;
+      ip = bf->code_ptr + INT();
       break;
 
     case BC_END:
@@ -196,7 +217,7 @@ int main (int argc, char* argv[]) {
 
     case BC_CJMPZ:
     case BC_CJMPNZ: {
-      int dest = INT;
+      int dest = INT();
       if (1 ^ l ^ !!UNBOX(POP())) {
         ip = bf->code_ptr + dest;
       }
@@ -205,19 +226,19 @@ int main (int argc, char* argv[]) {
 
     case BC_BEGIN:
     case BC_CBEGIN: {
-      int args = INT;
-      int locals = INT;
+      int args = INT();
+      int locals = INT();
       ALLOC(locals);
       cur_frame->locals = locals;
       break;
     }
 
     case BC_CLOSURE: {
-      int* dest = REF;
-      int args = INT;
+      int* dest = REF();
+      int args = INT();
       for (int i = 0; i < args; ++i) {
-        char loc_t = BYTE;
-        int arg = INT;
+        char loc_t = BYTE();
+        int arg = INT();
         PUSH(*resolve_loc(cur_frame, loc_t, arg));
       }
       int* cls = Bclosure(args, dest);
@@ -230,13 +251,13 @@ int main (int argc, char* argv[]) {
       int* cls;
 
     case BC_CALLC:
-      args = INT;
+      args = INT();
       cls = (int*) *(__gc_stack_top + 1 + args);
       goto call;
 
     case BC_CALL:
-      dest = INT;
-      args = INT;
+      dest = INT();
+      args = INT();
       cls = 0;
 
     call:
@@ -259,29 +280,29 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_TAG: {
-      char* tag = get_string(bf, INT);
-      int args = INT;
+      char* tag = get_string(bf, INT());
+      int args = INT();
       int* sexp = POP_REF();
       PUSH(Btag(sexp, LtagHash(tag), BOX(args)));
       break;
     }
 
     case BC_ARRAY: {
-      int sz = INT;
+      int sz = INT();
       int* arr = POP_REF();
       PUSH(Barray_patt(arr, BOX(sz)));
       break;
     }
 
     case BC_FAIL: {
-      int line = INT;
-      int col = INT;
+      int line = INT();
+      int col = INT();
       Bmatch_failure(POP_REF(), argv[1], line, col);
       break;
     }
 
     case BC_LINE:
-      INT;
+      INT();
       break;
 
     case BC_LREAD:
@@ -301,7 +322,7 @@ int main (int argc, char* argv[]) {
       break;
 
     case BC_BARRAY:
-      int* arr = Barray(INT);
+      int* arr = Barray(INT());
       PUSH_REF(arr);
       break;
 
@@ -326,18 +347,18 @@ int main (int argc, char* argv[]) {
       }
 
       case BC_LD:
-        PUSH(*resolve_loc(cur_frame, l, INT));
+        PUSH(*resolve_loc(cur_frame, l, INT()));
         break;
 
       case BC_LDA: {
-        int* val_ptr = resolve_loc(cur_frame, l, INT);
+        int* val_ptr = resolve_loc(cur_frame, l, INT());
         PUSH_REF(val_ptr);
         PUSH_REF(val_ptr);
         break;
       }
 
       case BC_ST:
-        *resolve_loc(cur_frame, l, INT) = TOP();
+        *resolve_loc(cur_frame, l, INT()) = TOP();
         break;
 
       case BC_PATT: {
@@ -351,7 +372,7 @@ int main (int argc, char* argv[]) {
       }
 
       default:
-        FAIL;
+        FAIL();
       }
     }
   }
