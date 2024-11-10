@@ -23,11 +23,10 @@ extern size_t* __gc_stack_bottom;
 #define POP() (__gc_stack_top++, CHECK_UNDERFLOW(), *__gc_stack_top)
 #define POP_REF() (int*) POP()
 #define TOP() (*(__gc_stack_top+1))
-#define ALLOC(n) do { __gc_stack_top -= (n); CHECK_OVERFLOW(); } while (0)
-#define TRUNC(n) do { \
-                      __gc_stack_top += (n); CHECK_UNDERFLOW();          \
-                      memset(__gc_stack_top - (n - 1), 0, n * sizeof(size_t)); \
+#define ALLOC(n) do { __gc_stack_top -= (n); CHECK_OVERFLOW(); \
+                      memset(__gc_stack_top + 1, 0, n * sizeof(size_t)); \
                  } while (0)
+#define TRUNC(n) do { __gc_stack_top += (n); CHECK_UNDERFLOW(); } while (0)
 
 /* The unpacked representation of bytecode file */
 typedef struct {
