@@ -34,12 +34,13 @@ typedef struct {
   char* string_ptr;              /* A pointer to the beginning of the string table */
   int*  public_ptr;              /* A pointer to the beginning of publics table    */
   char* code_ptr;                /* A pointer to the bytecode itself               */
-  int*  global_ptr;              /* A pointer to the global area                   */
   int   code_size;               /* The size (in bytes) of the bytecode section    */
+  /* ^^^ Custom fields ^^^ */
   int   stringtab_size;          /* The size (in bytes) of the string table        */
   int   global_area_size;        /* The size (in words) of global area             */
   int   public_symbols_number;   /* The number of public symbols                   */
   char  buffer[0];
+  /* ^^^ Bytefile structure ^^^ */
 } bytefile;
 
 /* Gets a string from a string table by an index */
@@ -65,7 +66,7 @@ static bytefile* read_file(char* fname) {
     failure("%s\n", strerror(errno));
   }
 
-  file = (bytefile*) malloc(sizeof(int*)*4 + sizeof(int) + (size = ftell (f)));
+  file = (bytefile*) malloc(sizeof(int*)*3 + sizeof(int) + (size = ftell (f)));
 
   if (file == 0) {
     failure("Unable to allocate memory.\n");
