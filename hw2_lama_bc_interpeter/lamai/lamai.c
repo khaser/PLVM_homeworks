@@ -44,7 +44,7 @@ typedef struct {
 } bytefile;
 
 /* Gets a string from a string table by an index */
-static char* get_string(bytefile* f, int pos) {
+static inline char* get_string(bytefile* f, int pos) {
   if (0 <= pos && pos < f->stringtab_size) {
     return &f->string_ptr[pos];
   } else {
@@ -132,13 +132,13 @@ int main (int argc, char* argv[]) {
 
   char* ip     = bf->code_ptr;
 
-#define CHECK_IP() (bf->code_ptr <= ip && ip < bf->code_ptr + bf->code_size) || \
-                     (failure("Instruction pointer outer of code bounds.\n" \
-                              "IP: %p\nCode start: %p\nCode end: %p\n", \
-                              ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42)
-#define INT()    (CHECK_IP(), ip += sizeof (int), *(int*)(ip - sizeof (int)))
+#define CHECK_IP(x) (bf->code_ptr <= ip && ip + x <= bf->code_ptr + bf->code_size) || \
+                      (failure("Instruction pointer outer of code bounds.\n" \
+                               "IP: %p\nCode start: %p\nCode end: %p\n", \
+                               ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42)
+#define INT()    (CHECK_IP(sizeof(int)), ip += sizeof (int), *(int*)(ip - sizeof (int)))
 #define REF()    ((int*) INT())
-#define BYTE()   (CHECK_IP(), *ip++)
+#define BYTE()   (CHECK_IP(1), *ip++)
 #define FAIL()   failure ("Invalid opcode %d-%d\n", h, l)
   do {
     unsigned char x = BYTE(),
