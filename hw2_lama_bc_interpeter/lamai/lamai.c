@@ -30,21 +30,21 @@ extern size_t* __gc_stack_bottom;
 
 /* The unpacked representation of bytecode file */
 typedef struct {
-  char* string_ptr;              /* A pointer to the beginning of the string table */
-  int*  public_ptr;              /* A pointer to the beginning of publics table    */
-  char* code_ptr;                /* A pointer to the bytecode itself               */
-  int   code_size;               /* The size (in bytes) of the bytecode section    */
+  const char* string_ptr;         /* A pointer to the beginning of the string table */
+  const int*  public_ptr;         /* A pointer to the beginning of publics table    */
+  const char* code_ptr;           /* A pointer to the bytecode itself               */
+  int   code_size;                /* The size (in bytes) of the bytecode section    */
   /* ^^^ Custom fields ^^^ */
-  int   stringtab_size;          /* The size (in bytes) of the string table        */
-  int   global_area_size;        /* The size (in words) of global area             */
-  int   public_symbols_number;   /* The number of public symbols                   */
-  char  buffer[0];
+  size_t stringtab_size;          /* The size (in bytes) of the string table        */
+  size_t global_area_size;        /* The size (in words) of global area             */
+  size_t public_symbols_number;   /* The number of public symbols                   */
+  char   buffer[0];
   /* ^^^ Bytefile structure ^^^ */
 } bytefile;
 
 /* Gets a string from a string table by an index */
-static inline char* get_string(bytefile* f, int pos) {
-  if (0 <= pos && pos < f->stringtab_size) {
+static inline const char* get_string(const bytefile* f, size_t pos) {
+  if (pos < f->stringtab_size) {
     return &f->string_ptr[pos];
   } else {
     failure("String offset out of bounds.\nRequested string offset: %d\nStringtab size: %d\n", pos);
@@ -52,7 +52,7 @@ static inline char* get_string(bytefile* f, int pos) {
 }
 
 /* Reads a binary bytecode file by name and unpacks it */
-static bytefile* read_file(char* fname) {
+static inline bytefile* read_file(const char* fname) {
   FILE* f = fopen(fname, "rb");
   long size;
   bytefile* file;
@@ -79,7 +79,7 @@ static bytefile* read_file(char* fname) {
 
   fclose(f);
 
-  int stringtab_offset = file->public_symbols_number * 2 * sizeof(int);
+  size_t stringtab_offset = file->public_symbols_number * 2 * sizeof(int);
   if (stringtab_offset < size) {
     file->string_ptr = file->buffer + file->public_symbols_number * 2 * sizeof(int);
   } else {
@@ -87,7 +87,7 @@ static bytefile* read_file(char* fname) {
             stringtab_offset, size);
   }
   file->public_ptr = (int*) file->buffer;
-  int code_offset = stringtab_offset + file->stringtab_size;
+  size_t code_offset = stringtab_offset + file->stringtab_size;
   if (code_offset < size) {
     file->code_ptr = file->buffer + code_offset;
     file->code_size = size - code_offset + 1;
@@ -100,22 +100,22 @@ static bytefile* read_file(char* fname) {
 }
 
 struct frame {
-    int*    vstack_base;
-    size_t  locals;
-    size_t  args;
-    char    is_closure;
-    void*   ret_ip;
+    int*        vstack_base;
+    size_t      locals;
+    size_t      args;
+    char        is_closure;
+    const void* ret_ip;
 } fstack[MAX_FRAME_STACK_SZ];
 
 struct frame* const main_frame = fstack + MAX_FRAME_STACK_SZ - 1;
 
 int vstack[MAX_VSTACK_SZ];
 
-static int binop(char, int, int);
-static int* resolve_loc(struct frame* cur_frame, char loc_type, int id);
-static void* Barray(int n);
-static void* Bsexp(int n, int tag);
-static void* Bclosure(int n, void* entry);
+static inline int binop(char, int, int);
+static inline int* resolve_loc(const struct frame* cur_frame, char loc_type, int id);
+static inline void* Barray(int n);
+static inline void* Bsexp(int n, int tag);
+static inline void* Bclosure(int n, void* entry);
 
 int main (int argc, char* argv[]) {
   bytefile* bf = read_file(argv[1]);
@@ -129,7 +129,7 @@ int main (int argc, char* argv[]) {
   struct frame* cur_frame = main_frame;
   cur_frame->vstack_base = __gc_stack_top;
 
-  char* ip     = bf->code_ptr;
+  const char* ip     = bf->code_ptr;
 
 #define CHECK_IP(x) (bf->code_ptr <= ip && ip + x <= bf->code_ptr + bf->code_size) || \
                       (failure("Instruction pointer outer of code bounds.\n" \
@@ -156,7 +156,7 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_SEXP:
-      char* tag = get_string(bf, INT());
+      const char* tag = get_string(bf, INT());
       int sz = INT();
       int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
       PUSH_REF(bsexp);
@@ -280,7 +280,7 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_TAG: {
-      char* tag = get_string(bf, INT());
+      const char* tag = get_string(bf, INT());
       int args = INT();
       int* sexp = POP_REF();
       PUSH(Btag(sexp, LtagHash(tag), BOX(args)));
@@ -382,7 +382,7 @@ int main (int argc, char* argv[]) {
   return 0;
 }
 
-int binop(char opcode, int a, int b) {
+static inline int binop(char opcode, int a, int b) {
     const int BINOP_COUNTER_START = __COUNTER__;
 #define BINOP(op) case (__COUNTER__ - BINOP_COUNTER_START - 1): return a op b; break;
   switch (opcode) {
@@ -406,7 +406,7 @@ int binop(char opcode, int a, int b) {
 }
 
 
-int* resolve_loc(struct frame* cur_frame, char loc_type, int idx) {
+static inline int* resolve_loc(const struct frame* cur_frame, char loc_type, int idx) {
   switch (loc_type) {
     case GLOBAL:
       return __gc_stack_bottom - 1 - idx;
@@ -424,7 +424,7 @@ int* resolve_loc(struct frame* cur_frame, char loc_type, int idx) {
 
 /* Following routines copy-pasted from runtime,
  * but takes arguments from local virtual stack instead of va_args (host stack) */
-static void* Barray(int n) {
+static inline void* Barray(int n) {
   int i;
   data* r= (data*) alloc_array(n);
 
@@ -435,7 +435,7 @@ static void* Barray(int n) {
   return r->contents;
 }
 
-static void* Bsexp(int n, int tag) {
+static inline void* Bsexp(int n, int tag) {
   int fields_cnt = n;
   data* r = (data *)alloc_sexp(fields_cnt);
   ((sexp *)r)->tag = 0;
@@ -449,7 +449,7 @@ static void* Bsexp(int n, int tag) {
   return (int *)r->contents;
 }
 
-static void* Bclosure(int n, void* entry) {
+static inline void* Bclosure(int n, void* entry) {
   data* r = (data*) alloc_closure(n + 1);
   ((void **)r->contents)[0] = entry;
 

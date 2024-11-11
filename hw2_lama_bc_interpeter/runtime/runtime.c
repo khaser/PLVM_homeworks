@@ -61,7 +61,7 @@ void Lassert (void *f, char *s, ...) {
   while (0)
 
 extern void *Bsexp (int n, ...);
-extern int   LtagHash (char *);
+extern int   LtagHash (const char *);
 
 void *global_sysargs;
 void *global_stdout;
@@ -221,7 +221,7 @@ static char *chars = "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234
 
 extern char *de_hash (int);
 
-extern int LtagHash (char *s) {
+extern int LtagHash (const char *s) {
   char *p;
   int   h = 0, limit = 0;
 
@@ -506,7 +506,7 @@ extern int LregexpMatch (struct re_pattern_buffer *b, char *s, int pos) {
   return BOX(res);
 }
 
-extern void *Bstring (void *);
+extern void *Bstring (const void *);
 
 void *Lclone (void *p) {
   data *obj;
@@ -728,7 +728,7 @@ extern void *LmakeString (int length) {
   return r->contents;
 }
 
-extern void *Bstring (void *p) {
+extern void *Bstring (const void *p) {
   int   n = strlen(p);
   void *s = NULL;
 
