@@ -8,32 +8,14 @@
 #include "../runtime/runtime.h"
 #include "runtime_externs.h"
 #include "sm_encoding.h"
-
-#define MAX_VSTACK_SZ      10000
-#define MAX_FRAME_STACK_SZ 10000
-
-extern size_t* __gc_stack_top; /* points to first uninitialized vstack element */
-extern size_t* __gc_stack_bottom;
-
-#define CHECK_UNDERFLOW() (__gc_stack_bottom - __gc_stack_top < 0 && (failure("vstack underflow\n"), 42))
-#define CHECK_OVERFLOW() (__gc_stack_bottom - __gc_stack_top > MAX_VSTACK_SZ && (failure("vstack overflow\n"), 228))
-
-#define PUSH(val) (CHECK_OVERFLOW(), *(__gc_stack_top--) = val)
-#define PUSH_REF(val) PUSH((int) (val))
-#define POP() (__gc_stack_top++, CHECK_UNDERFLOW(), *__gc_stack_top)
-#define POP_REF() (int*) POP()
-#define TOP() (*(__gc_stack_top+1))
-#define ALLOC(n) do { __gc_stack_top -= (n); CHECK_OVERFLOW(); \
-                      memset(__gc_stack_top + 1, 0, n * sizeof(size_t)); \
-                 } while (0)
-#define TRUNC(n) do { __gc_stack_top += (n); CHECK_UNDERFLOW(); } while (0)
+#include "vstack.h"
 
 /* The unpacked representation of bytecode file */
 typedef struct {
   const char* string_ptr;         /* A pointer to the beginning of the string table */
   const int*  public_ptr;         /* A pointer to the beginning of publics table    */
   const char* code_ptr;           /* A pointer to the bytecode itself               */
-  int   code_size;                /* The size (in bytes) of the bytecode section    */
+  size_t      code_size;          /* The size (in bytes) of the bytecode section    */
   /* ^^^ Custom fields ^^^ */
   size_t stringtab_size;          /* The size (in bytes) of the string table        */
   size_t global_area_size;        /* The size (in words) of global area             */
@@ -65,7 +47,7 @@ static inline bytefile* read_file(const char* fname) {
     failure("%s\n", strerror(errno));
   }
 
-  file = (bytefile*) malloc(sizeof(int*)*3 + sizeof(int) + (size = ftell (f)));
+  file = (bytefile*) malloc(sizeof(int*) * 3 + sizeof(size_t) + (size = ftell(f)));
 
   if (file == 0) {
     failure("Unable to allocate memory.\n");
@@ -111,11 +93,31 @@ struct frame* const main_frame = fstack + MAX_FRAME_STACK_SZ - 1;
 
 int vstack[MAX_VSTACK_SZ];
 
-static inline int binop(char, int, int);
-static inline int* resolve_loc(const struct frame* cur_frame, char loc_type, int id);
-static inline void* Barray(int n);
-static inline void* Bsexp(int n, int tag);
-static inline void* Bclosure(int n, void* entry);
+static inline int binop(char opcode, int a, int b) {
+    switch (opcode) {
+#define DEF(opcode, op) case opcode: return a op b; break;
+    BINOPS(DEF)
+#undef DEF
+    default:
+      failure("Unsupported opcode for binary operation: %d\n", opcode);
+  }
+}
+
+static inline __attribute__((always_inline)) int* resolve_loc(const struct frame* cur_frame, char loc_type, int idx) {
+  switch (loc_type) {
+    case GLOBAL:
+      return __gc_stack_bottom - 1 - idx;
+    case LOCAL:
+      return cur_frame->vstack_base - idx;
+    case ARGUMENT:
+      return cur_frame->args + cur_frame->vstack_base - idx;
+    case CAPTURED:
+      int* cls = *(int**)(cur_frame->args + cur_frame->vstack_base + 1);
+      return cls + 1 + idx;
+    default:
+      failure("Unsupported memory operation operand type: %d\n", loc_type);
+  }
+}
 
 int main (int argc, char* argv[]) {
   bytefile* bf = read_file(argv[1]);
@@ -135,9 +137,11 @@ int main (int argc, char* argv[]) {
                       (failure("Instruction pointer outer of code bounds.\n" \
                                "IP: %p\nCode start: %p\nCode end: %p\n", \
                                ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42)
-#define INT()    (CHECK_IP(sizeof(int)), ip += sizeof (int), *(int*)(ip - sizeof (int)))
-#define REF()    ((int*) INT())
-#define BYTE()   (CHECK_IP(1), *ip++)
+#define GENERIC_IP_PEEK(type) (CHECK_IP(sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
+#define INT()    (GENERIC_IP_PEEK(int))
+#define UINT()   (GENERIC_IP_PEEK(size_t))
+#define REF()    (GENERIC_IP_PEEK(int*))
+#define BYTE()   (GENERIC_IP_PEEK(unsigned char))
 #define FAIL()   failure ("Invalid opcode %d-%d\n", h, l)
   do {
     unsigned char x = BYTE(),
@@ -151,13 +155,13 @@ int main (int argc, char* argv[]) {
       break;
 
     case BC_STRING: {
-      PUSH_REF(Bstring(get_string(bf, INT())));
+      PUSH_REF(Bstring(get_string(bf, UINT())));
       break;
     }
 
     case BC_SEXP:
-      const char* tag = get_string(bf, INT());
-      int sz = INT();
+      const char* tag = get_string(bf, UINT());
+      size_t sz = UINT();
       int* bsexp = Bsexp(sz, UNBOX(LtagHash(tag)));
       PUSH_REF(bsexp);
       break;
@@ -280,7 +284,7 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_TAG: {
-      const char* tag = get_string(bf, INT());
+      const char* tag = get_string(bf, UINT());
       int args = INT();
       int* sexp = POP_REF();
       PUSH(Btag(sexp, LtagHash(tag), BOX(args)));
@@ -380,82 +384,4 @@ int main (int argc, char* argv[]) {
   stop:
 
   return 0;
-}
-
-static inline int binop(char opcode, int a, int b) {
-    const int BINOP_COUNTER_START = __COUNTER__;
-#define BINOP(op) case (__COUNTER__ - BINOP_COUNTER_START - 1): return a op b; break;
-  switch (opcode) {
-    BINOP(+);
-    BINOP(-);
-    BINOP(*);
-    BINOP(/);
-    BINOP(%);
-    BINOP(<);
-    BINOP(<=);
-    BINOP(>);
-    BINOP(>=);
-    BINOP(==);
-    BINOP(!=);
-    BINOP(&&);
-    BINOP(||);
-    default:
-      failure("Unsupported opcode for binary operation: %d\n", opcode);
-  }
-#undef BINOP
-}
-
-
-static inline int* resolve_loc(const struct frame* cur_frame, char loc_type, int idx) {
-  switch (loc_type) {
-    case GLOBAL:
-      return __gc_stack_bottom - 1 - idx;
-    case LOCAL:
-      return cur_frame->vstack_base - idx;
-    case ARGUMENT:
-      return cur_frame->args + cur_frame->vstack_base - idx;
-    case CAPTURED:
-      int* cls = *(int**)(cur_frame->args + cur_frame->vstack_base + 1);
-      return cls + 1 + idx;
-    default:
-      failure("Unsupported memory operation operand type: %d\n", loc_type);
-  }
-}
-
-/* Following routines copy-pasted from runtime,
- * but takes arguments from local virtual stack instead of va_args (host stack) */
-static inline void* Barray(int n) {
-  int i;
-  data* r= (data*) alloc_array(n);
-
-  for (i = n - 1; i >= 0; --i) {
-    ((int*)r->contents)[i] = POP();
-  }
-
-  return r->contents;
-}
-
-static inline void* Bsexp(int n, int tag) {
-  int fields_cnt = n;
-  data* r = (data *)alloc_sexp(fields_cnt);
-  ((sexp *)r)->tag = 0;
-
-  for (int i = n; i > 0; --i) {
-    ((int *)r->contents)[i] = POP();
-  }
-
-  ((sexp *)r)->tag = tag;
-
-  return (int *)r->contents;
-}
-
-static inline void* Bclosure(int n, void* entry) {
-  data* r = (data*) alloc_closure(n + 1);
-  ((void **)r->contents)[0] = entry;
-
-  for (int i = n; i >= 1; --i) {
-    ((int *)r->contents)[i] = POP();
-  }
-
-  return r->contents;
 }

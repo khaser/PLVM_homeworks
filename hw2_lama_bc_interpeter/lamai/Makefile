@@ -1,5 +1,5 @@
 NAME=lamai
-CC_FLAGS=-m32 -g2 -fstack-protector-all
+CC_FLAGS=-m32 -O2 -fstack-protector-all
 LD_FLAGS=$(CC_FLAGS) -Wl,--no-warn-search-mismatch
 
 all $(NAME): $(NAME).o

@@ -66,4 +66,18 @@ const int (*PATT_FNS[]) (void*) = {
   Bclosure_tag_patt,
 };
 
+#define BINOPS(DEF) \
+  DEF( 0, +)\
+  DEF( 1, -)\
+  DEF( 2, *)\
+  DEF( 3, /)\
+  DEF( 4, %)\
+  DEF( 5, <)\
+  DEF( 6, <=)\
+  DEF( 7, >)\
+  DEF( 8, >=)\
+  DEF( 9, ==)\
+  DEF(10, !=)\
+  DEF(11, &&)\
+  DEF(12, ||)
 #endif
