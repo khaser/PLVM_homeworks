@@ -131,18 +131,30 @@ int main (int argc, char* argv[]) {
   struct frame* cur_frame = main_frame;
   cur_frame->vstack_base = __gc_stack_top;
 
-  const char* ip     = bf->code_ptr;
+  const char* ip = bf->code_ptr;
 
-#define CHECK_IP(x) (bf->code_ptr <= ip && ip + x <= bf->code_ptr + bf->code_size) || \
+#define CHECK_IP(ip, sz) (bf->code_ptr <= (ip) && (ip) + (sz) <= bf->code_ptr + bf->code_size)
+#define ASSERT_IP(sz) (CHECK_IP(ip, sz) || \
                       (failure("Instruction pointer outer of code bounds.\n" \
                                "IP: %p\nCode start: %p\nCode end: %p\n", \
-                               ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42)
-#define GENERIC_IP_PEEK(type) (CHECK_IP(sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
+                               ip, bf->code_ptr, bf->code_ptr + bf->code_size), 42))
+#define GENERIC_IP_PEEK(type) (ASSERT_IP(sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
 #define INT()    (GENERIC_IP_PEEK(int))
 #define UINT()   (GENERIC_IP_PEEK(size_t))
 #define REF()    (GENERIC_IP_PEEK(int*))
 #define BYTE()   (GENERIC_IP_PEEK(unsigned char))
 #define FAIL()   failure ("Invalid opcode %d-%d\n", h, l)
+
+#define MAKE_JUMP(offset) \
+    do { \
+      if (!CHECK_IP(bf->code_ptr + (offset), 1)) { \
+        failure("Incorrect jump destination.\n" \
+                "Jump destination: %x\nCurrent IP: %x\n", \
+                offset, ip - bf->code_ptr); \
+      } \
+      ip = bf->code_ptr + (offset); \
+    } while (0);
+
   do {
     unsigned char x = BYTE(),
          h = (x & 0xF0) >> 4,
@@ -182,7 +194,8 @@ int main (int argc, char* argv[]) {
     }
 
     case BC_JMP:
-      ip = bf->code_ptr + INT();
+      size_t offset = UINT();
+      MAKE_JUMP(offset);
       break;
 
     case BC_END:
@@ -221,9 +234,9 @@ int main (int argc, char* argv[]) {
 
     case BC_CJMPZ:
     case BC_CJMPNZ: {
-      int dest = INT();
+      size_t offset = UINT();
       if (1 ^ l ^ !!UNBOX(POP())) {
-        ip = bf->code_ptr + dest;
+        MAKE_JUMP(offset);
       }
       break;
     }
@@ -251,17 +264,17 @@ int main (int argc, char* argv[]) {
     }
 
     {
-      int args, dest;
-      int* cls;
+      size_t args, dest;
+      size_t* cls;
 
     case BC_CALLC:
-      args = INT();
-      cls = (int*) *(__gc_stack_top + 1 + args);
+      args = UINT();
+      cls = (size_t*) *(__gc_stack_top + 1 + args);
       goto call;
 
     case BC_CALL:
-      dest = INT();
-      args = INT();
+      dest = UINT();
+      args = UINT();
       cls = 0;
 
     call:
@@ -279,7 +292,7 @@ int main (int argc, char* argv[]) {
       RET_VAL
       */
 
-      ip = bf->code_ptr + (cls ? *cls : dest);
+      MAKE_JUMP(cls ? *cls : dest);
       break;
     }
 
