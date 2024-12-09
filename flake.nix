@@ -18,7 +18,10 @@
       devShell = pkgs.mkShell {
         name = "plvm-lama";
 
-        nativeBuildInputs = with pkgs; [ gdb gcc_multi ] ++ (with pkgs.ocamlPackages; [
+        nativeBuildInputs = with pkgs; [
+          gdb gcc_multi
+          clang-tools_16
+        ] ++ (with pkgs.ocamlPackages; [
           findlib
           ocaml
           dune_3
@@ -29,4 +32,4 @@
 
       };
     });
-}
+  }
