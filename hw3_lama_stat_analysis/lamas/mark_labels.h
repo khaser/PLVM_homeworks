@@ -13,6 +13,8 @@ struct BytecodeInfo {
 
 extern std::unordered_map<ip_t, BytecodeInfo> bytecode_data;
 
+namespace {
+
 template<Bytecodes B, class... Opnds>
 struct MarkLabels {
   MarkLabels (const bytefile *bf) {};
@@ -53,5 +55,7 @@ struct MarkLabels<B, size_t, size_t> {
     return {code.data() + code.size(), new_ip};
   }
 };
+
+} // anon namespace
 
 #endif

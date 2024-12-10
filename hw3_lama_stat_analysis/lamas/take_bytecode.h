@@ -4,6 +4,8 @@
 #include "sm_encoding.h"
 #include "bytefile.h"
 
+namespace {
+
 template<Bytecodes B, class... Opnds>
 struct PrintCode {
   PrintCode (const bytefile *bf) {};
@@ -20,5 +22,7 @@ struct TakeBytecode {
     return code.data() + code.size();
   }
 };
+
+} // anon namespace
 
 #endif

@@ -8,6 +8,8 @@
 #include <cstring>
 #include <vector>
 
+namespace {
+
 /* The unpacked representation of bytecode file */
 struct bytefile {
   const char* string_ptr;         /* A pointer to the beginning of the string table */
@@ -56,7 +58,7 @@ struct bytefile {
 };
 
 /* Reads a binary bytecode file by name and unpacks it */
-static inline bytefile* read_file(const char* fname) {
+inline bytefile* read_file(const char* fname) {
   FILE* f = fopen(fname, "rb");
   long size;
   bytefile* file;
@@ -110,5 +112,7 @@ static inline bytefile* read_file(const char* fname) {
 
   return file;
 }
+
+} // anon namespace
 
 #endif

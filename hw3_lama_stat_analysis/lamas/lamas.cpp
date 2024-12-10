@@ -12,6 +12,8 @@
 
 std::unordered_map<ip_t, BytecodeInfo> bytecode_data;
 
+namespace {
+
 template<template<Bytecodes B, class... Opnds> class Func, class T>
 inline T dispatch(bytefile *bf, ip_t ip) {
 
@@ -216,6 +218,8 @@ inline T dispatch(bytefile *bf, ip_t ip) {
 #undef REF
 #undef BYTE
 }
+
+} // anon namespace
 
 int main(int argc, char* argv[]) {
   bytefile *bf = read_file(argv[1]);
