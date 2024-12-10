@@ -225,11 +225,6 @@ int main(int argc, char* argv[]) {
   // Traverse to create jump labels & mark reachable code
   while (!ips_to_process.empty()) {
       ip_t ip = ips_to_process.back();
-
-      std::cout << (void*) (ip - bf->code_ptr) << ' ';
-      dispatch<PrintCode, void>(bf, ip);
-      std::cout << '\n';
-
       ips_to_process.pop_back();
       if (bytecode_data[ip].reachable) continue;
       bytecode_data[ip].reachable = true;
@@ -243,12 +238,11 @@ int main(int argc, char* argv[]) {
 
   // Traverse to calculate idioms occurrences
   for (ip_t ip = bf->code_ptr; ip < bf->code_ptr + bf->code_size; ip = dispatch<TakeBytecode, ip_t>(bf, ip)) {
-      std::cout << (void*) (ip - bf->code_ptr) << ' ';
-      dispatch<PrintCode, void>(bf, ip);
-      std::cout << '\n';
+      // std::cout << (void*) (ip - bf->code_ptr) << ' ';
+      // dispatch<PrintCode, void>(bf, ip);
+      // std::cout << '\n';
       if (!bytecode_data[ip].reachable) {
         last_insn = {};
-        std::cerr << "Warning! Not reachable code found\n";
         continue;
       }
       if (bytecode_data[ip].jump_label) {

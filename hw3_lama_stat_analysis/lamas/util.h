@@ -11,9 +11,14 @@ using ip_t = const unsigned char*;
 using code = std::span<const unsigned char>;
 
 struct CodeHash {
+  static const size_t A = 4;
+  static const size_t B = 543;
   size_t operator () (const code &a) const {
-    // TODO!!!!
-    return a.size();
+    size_t res = 1;
+    for (auto i : a) {
+      res = i * A + B; // overflow by powers of two here
+    }
+    return res;
   }
 };
 
