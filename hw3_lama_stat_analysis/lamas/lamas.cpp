@@ -1,28 +1,21 @@
+#include <unordered_map>
 #include <memory>
 #include <vector>
 #include <span>
 #include <functional>
+#include <optional>
 
 #include "bytefile.h"
 #include "sm_encoding.h"
 #include "mark_labels.h"
+#include "take_bytecode.h"
 
 std::unordered_map<ip_t, BytecodeInfo> bytecode_data;
 
-template<Bytecodes B, class... Opnds>
-struct PrintCode {
-  PrintCode (const bytefile &bf) {};
-  void operator () (code code, const char* str, Opnds... opnds) const {
-    std::cout << str << ' ';
-    ((std::cout << std::forward<Opnds>(opnds) << " "), ...);
-    std::cout << '\n';
-  }
-};
+template<template<Bytecodes B, class... Opnds> class Func, class T>
+inline T dispatch(bytefile *bf, ip_t ip) {
 
-template<template<Bytecodes B, class... Opnds> class Func>
-inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
-
-#define GENERIC_IP_PEEK(type) (bf.assert_ip(ip, sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
+#define GENERIC_IP_PEEK(type) (bf->assert_ip(ip, sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
 #define INT()    (GENERIC_IP_PEEK(int))
 #define UINT()   (GENERIC_IP_PEEK(size_t))
 #define REF()    (GENERIC_IP_PEEK(int*))
@@ -36,36 +29,28 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
 
   case BC_JMP: {
     size_t offset = UINT();
-    (Func<BC_JMP, size_t> (bf))({ip - 4, ip}, "JMP", offset);
-    ip_t new_ip = bf.code_ptr + offset;
-    return {new_ip};
+    return (Func<BC_JMP, size_t> (bf))({ip - 5, ip}, "JMP", offset);
   }
 
   case BC_CJMPZ: {
     size_t offset = UINT();
-    (Func<BC_CJMPZ, size_t> (bf))({ip - 4, ip}, "CJMPZ", offset);
-    ip_t new_ip = bf.code_ptr + offset;
-    return {ip, new_ip};
+    return (Func<BC_CJMPZ, size_t> (bf))({ip - 5, ip}, "CJMPZ", offset);
   }
 
   case BC_CJMPNZ: {
     size_t offset = UINT();
-    (Func<BC_CJMPNZ, size_t> (bf))({ip - 4, ip}, "CJMPNZ", offset);
-    ip_t new_ip = bf.code_ptr + offset;
-    return {ip, new_ip};
+    return (Func<BC_CJMPNZ, size_t> (bf))({ip - 5, ip}, "CJMPNZ", offset);
   }
 
   case BC_BEGIN: {
     int args = INT();
     int locals = INT();
-    (Func<BC_BEGIN, size_t, size_t> (bf))({ip - 8, ip}, "BEGIN", args, locals);
-    return {ip};
+    return (Func<BC_BEGIN, size_t, size_t> (bf))({ip - 9, ip}, "BEGIN", args, locals);
   }
 
   case BC_CONST: {
     int imm = INT();
-    (Func<BC_CONST, int> (bf))({ip - 4, ip}, "CONST", imm);
-    return {ip};
+    return (Func<BC_CONST, int> (bf))({ip - 5, ip}, "CONST", imm);
   }
 
   // case BC_STRING: {
@@ -88,8 +73,7 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
   // }
 
   case BC_END: {
-    (Func<BC_END> (bf))({ip, ip}, "END");
-    return {};
+    return (Func<BC_END> (bf))({ip - 1, ip}, "END");
   }
 
   // case BC_RET: {
@@ -97,8 +81,7 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
   // }
 
   case BC_DROP: {
-    (Func<BC_DROP> (bf))({ip, ip}, "DROP");
-    return {ip};
+    return (Func<BC_DROP> (bf))({ip - 1, ip}, "DROP");
   }
 
   // case BC_DUP:
@@ -135,9 +118,7 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
   case BC_CALL: {
     size_t args = UINT();
     size_t dest = UINT();
-    (Func<BC_CALL, size_t, size_t> (bf))({ip - 8, ip}, "CALL", args, dest);
-    ip_t callee_ip = bf.code_ptr + dest;
-    return {ip, callee_ip};
+    return (Func<BC_CALL, size_t, size_t> (bf))({ip - 9, ip}, "CALL", args, dest);
   }
 
   // case BC_TAG: {
@@ -159,18 +140,15 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
 
   case BC_LINE: {
     int line = INT();
-    (Func<BC_LINE, int> (bf))({ip - 4, ip}, "LINE", line);
-    return {ip};
+    return (Func<BC_LINE, int> (bf))({ip - 5, ip}, "LINE", line);
   }
 
   case BC_LREAD: {
-    (Func<BC_LREAD> (bf))({ip, ip}, "CALL Lread");
-    return {ip};
+    return (Func<BC_LREAD> (bf))({ip, ip}, "CALL Lread");
   }
 
   case BC_LWRITE: {
-    (Func<BC_LWRITE> (bf))({ip, ip}, "CALL Lwrite");
-    return {ip};
+    return (Func<BC_LWRITE> (bf))({ip, ip}, "CALL Lwrite");
   }
 
   // case BC_LLENGTH:
@@ -193,14 +171,12 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
 
         case BC_LD: {
           int idx = INT();
-          (Func<BC_LD, int> (bf))({ip - 4, ip}, "LD", idx);
-          return {ip};
+          return (Func<BC_LD, int> (bf))({ip - 5, ip}, "LD", idx);
         }
 
         case BC_ST: {
           int idx = INT();
-          (Func<BC_ST, int> (bf))({ip - 4, ip}, "ST", idx);
-          return {ip};
+          return (Func<BC_ST, int> (bf))({ip - 5, ip}, "ST", idx);
         }
 
         // case BC_STOP: {
@@ -208,8 +184,7 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
         // }
 
         case BC_BINOP: {
-          (Func<BC_BINOP> (bf))({ip - 4, ip}, "BINOP");
-          return {ip};
+          return (Func<BC_BINOP> (bf))({ip - 5, ip}, "BINOP");
         }
 
         // case BC_LDA: {
@@ -222,7 +197,7 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
         // }
 
         default: {
-          std::cerr << "Invalid opcode " << h << "-" << l << "\n";
+          std::cerr << "Invalid opcode " << (int) h << "-" << (int) l << "\n";
           exit(1);
         }
       }
@@ -236,10 +211,9 @@ inline std::vector<ip_t> dispatch(bytefile& bf, ip_t ip) {
 }
 
 int main(int argc, char* argv[]) {
-  bytefile bf = read_file(argv[1]);
+  bytefile *bf = read_file(argv[1]);
 
-  std::vector<ip_t> ips_to_process = bf.get_public_ptrs();
-  // std::unordered_map<code, int> idiom_stat;
+  std::vector<ip_t> ips_to_process = bf->get_public_ptrs();
 
   // Traverse to create jump labels & mark reachable code
   while (!ips_to_process.empty()) {
@@ -247,18 +221,54 @@ int main(int argc, char* argv[]) {
       ips_to_process.pop_back();
       if (bytecode_data[ip].reachable) continue;
       bytecode_data[ip].reachable = true;
-      // std::cerr << "TRAVERSE 1: " << (void*) ip << ' ' << (int)*(unsigned char*)ip << '\n';
-      dispatch<PrintCode>(bf, ip);
-      for (auto cont_ip : dispatch<MarkLabels>(bf, ip)) {
+      for (auto cont_ip : dispatch<MarkLabels, std::vector<ip_t>>(bf, ip)) {
         ips_to_process.push_back(cont_ip);
       }
   }
 
-  // for (auto i = bf.code_ptr; i != bf.code_ptr + bf.code_size; ++i) {
-  //   BytecodeInfo k = bytecode_data[i];
-  //   std::cout << (void*) i << ' ' << k.reachable << ' ' << k.jump_label << '\n';
-  // }
+  std::optional<code> last_insn;
+  std::unordered_map<code, int, CodeHash, CodeComparator> stats, pair_stats;
 
+  // Traverse to calculate idioms occurrences
+  for (ip_t ip = bf->code_ptr; ip < bf->code_ptr + bf->code_size; ip = dispatch<TakeBytecode, ip_t>(bf, ip)) {
+      dispatch<PrintCode, void>(bf, ip);
+      std::cout << '\n';
+      if (!bytecode_data[ip].reachable) {
+        last_insn = {};
+        std::cerr << "Not reachable code found\n";
+        continue;
+      }
+
+      ip_t next_ip = dispatch<TakeBytecode, ip_t>(bf, ip);
+      code c(ip, next_ip);
+      stats[c]++;
+      if (last_insn) {
+        code prev_bc = *last_insn;
+        size_t cur_bc_sz = next_ip - ip;
+        code bc_pair(prev_bc.data(), prev_bc.data() + prev_bc.size() + cur_bc_sz);
+        pair_stats[bc_pair]++;
+      }
+      last_insn = c;
+  }
+  std::cout << '\n';
+
+  std::vector<std::pair<code, int>> v_stats(stats.begin(), stats.end());
+  std::vector<std::pair<code, int>> v_pair_stats(pair_stats.begin(), pair_stats.end());
+  std::sort(v_stats.begin(), v_stats.end(), [] (const auto &a, const auto &b) { return a.second > b.second; });
+  std::sort(v_pair_stats.begin(), v_pair_stats.end(), [] (const auto &a, const auto &b) { return a.second > b.second; });
+
+  std::cout << "Single idioms occurrences:\n";
+  for (auto [k, v] : v_stats) {
+    dispatch<PrintCode, void>(bf, k.data());
+    std::cout << ": " << v << '\n';
+  }
+  std::cout << "\nIdiom-pairs occurrences:\n";
+  for (auto [k, v] : v_pair_stats) {
+    dispatch<PrintCode, void>(bf, k.data());
+    std::cout << "+ ";
+    dispatch<PrintCode, void>(bf, dispatch<TakeBytecode, ip_t>(bf, k.data()));
+    std::cerr << ": " << v << '\n';
+  }
 
   return 0;
 }

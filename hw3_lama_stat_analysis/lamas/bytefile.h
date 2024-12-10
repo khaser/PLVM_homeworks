@@ -28,8 +28,9 @@ struct bytefile {
   inline void assert_ip(ip_t ip, int sz) {
     if (unlikely(!check_ip(ip, sz))) {
       std::cerr << "Instruction pointer outer of code bounds.\n" \
-                   "IP: " << ip << "\nCode start: " << code_ptr << "\n" << \
-                   "Code end: " << code_ptr + code_size << "\n";
+                   "IP: " << (void*) ip << "\nCode start: " << (void*) code_ptr << "\n" << \
+                   "Size: " << sz << "\nCode end: " << (void*) (code_ptr + code_size) << "\n";
+      exit(1);
     }
   }
 
@@ -55,7 +56,7 @@ struct bytefile {
 };
 
 /* Reads a binary bytecode file by name and unpacks it */
-static inline bytefile read_file(const char* fname) {
+static inline bytefile* read_file(const char* fname) {
   FILE* f = fopen(fname, "rb");
   long size;
   bytefile* file;
@@ -99,7 +100,7 @@ static inline bytefile read_file(const char* fname) {
   size_t code_offset = stringtab_offset + file->stringtab_size;
   if (code_offset < size) {
     file->code_ptr = (ip_t) file->buffer + code_offset;
-    file->code_size = size - code_offset + 1;
+    file->code_size = size - 3 * sizeof(size_t) - code_offset - file->global_area_size * sizeof(size_t) + 3;
   } else {
     std::cerr << "Code section can't be found in file.\n" << \
                  "Recognized code offset: " << code_offset << "\n"\
@@ -107,7 +108,7 @@ static inline bytefile read_file(const char* fname) {
     exit(1);
   }
 
-  return *file;
+  return file;
 }
 
 #endif

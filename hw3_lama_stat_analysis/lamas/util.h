@@ -10,4 +10,17 @@ using ip_t = const unsigned char*;
 
 using code = std::span<const unsigned char>;
 
+struct CodeHash {
+  size_t operator () (const code &a) const {
+    // TODO!!!!
+    return a.size();
+  }
+};
+
+struct CodeComparator {
+  bool operator () (const code &a, const code &b) const {
+    return std::equal(a.begin(), a.end(), b.begin(), b.end());
+  }
+};
+
 #endif
