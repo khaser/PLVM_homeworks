@@ -17,8 +17,12 @@ template<Bytecodes B, class... Opnds>
 struct MarkLabels {
   MarkLabels (const bytefile *bf) {};
   std::vector<ip_t> operator () (code code, const char* str, Opnds... opnds) const {
-    if (B == BC_END) return {};
-    else return {code.data() + code.size()};
+    ip_t c = code.data() + code.size();
+    if (B == BC_END) {
+      bytecode_data[c].jump_label = true;
+    }
+    if (B == BC_END || B == BC_STOP) return {};
+    else return {c};
   }
 };
 
@@ -38,11 +42,12 @@ struct MarkLabels<B, size_t> {
   }
 };
 
-template<>
-struct MarkLabels<BC_CALL, size_t, size_t> {
+template<Bytecodes B>
+requires (B == BC_CALL || B == BC_CLOSURE)
+struct MarkLabels<B, size_t, size_t> {
   const ip_t code_ptr;
   MarkLabels (const bytefile *bf) : code_ptr(bf->code_ptr) {};
-  std::vector<ip_t> operator () (code code, const char* str, size_t args, size_t dest) const {
+  std::vector<ip_t> operator () (code code, const char* str, size_t dest, size_t args) const {
     ip_t new_ip = code_ptr + dest;
     bytecode_data[new_ip].jump_label = true;
     return {code.data() + code.size(), new_ip};

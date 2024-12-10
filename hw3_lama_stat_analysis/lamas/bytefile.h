@@ -47,7 +47,7 @@ struct bytefile {
   inline std::vector<ip_t> get_public_ptrs() const {
     std::vector<ip_t> res(public_symbols_number);
     for (size_t i = 0; i < public_symbols_number; ++i) {
-      res[i] = (ip_t) (public_ptr[2 * i] + code_ptr);
+      res[i] = (ip_t) (public_ptr[2 * i + 1] + code_ptr);
     }
     return res;
   }
@@ -100,7 +100,7 @@ static inline bytefile* read_file(const char* fname) {
   size_t code_offset = stringtab_offset + file->stringtab_size;
   if (code_offset < size) {
     file->code_ptr = (ip_t) file->buffer + code_offset;
-    file->code_size = size - 3 * sizeof(size_t) - code_offset - file->global_area_size * sizeof(size_t) + 3;
+    file->code_size = size - 3 * sizeof(size_t) - code_offset - 1;
   } else {
     std::cerr << "Code section can't be found in file.\n" << \
                  "Recognized code offset: " << code_offset << "\n"\

@@ -53,94 +53,99 @@ inline T dispatch(bytefile *bf, ip_t ip) {
     return (Func<BC_CONST, int> (bf))({ip - 5, ip}, "CONST", imm);
   }
 
-  // case BC_STRING: {
-  //   int sz = UINT();
-  //   break;
-  // }
-  //
-  // case BC_SEXP: {
-  //   const char* tag = get_string(bf, UINT());
-  //   size_t sz = UINT();
-  //   break;
-  // }
-  //
-  // case BC_STI: {
-  //   break;
-  // }
-  //
-  // case BC_STA: {
-  //   break;
-  // }
+  case BC_STRING: {
+    int sz = UINT();
+    return (Func<BC_STRING, int> (bf))({ip - 5, ip}, "STRING", sz);
+  }
+
+  case BC_SEXP: {
+    size_t tag_idx = UINT();
+    size_t sz = UINT();
+    return (Func<BC_SEXP, size_t, size_t> (bf))({ip - 9, ip}, "S_EXP", tag_idx, sz);
+  }
+
+  case BC_STI: {
+    return (Func<BC_STI> (bf))({ip - 1, ip}, "STI");
+  }
+
+  case BC_STA: {
+    return (Func<BC_STA> (bf))({ip - 1, ip}, "STA");
+  }
 
   case BC_END: {
     return (Func<BC_END> (bf))({ip - 1, ip}, "END");
   }
 
-  // case BC_RET: {
-  //   break;
-  // }
+  case BC_RET: {
+    return (Func<BC_RET> (bf))({ip - 1, ip}, "RET");
+  }
 
   case BC_DROP: {
     return (Func<BC_DROP> (bf))({ip - 1, ip}, "DROP");
   }
 
-  // case BC_DUP:
-  //   break;
-  //
-  // case BC_SWAP:
-  //   break;
-  //
-  // case BC_ELEM: {
-  //   break;
-  // }
-  //
-  // case BC_CBEGIN: {
-  //   int args = INT();
-  //   int locals = INT();
-  //   break;
-  // }
-  //
-  // case BC_CLOSURE: {
-  //   int* dest = REF();
-  //   int args = INT();
-  //   for (int i = 0; i < args; ++i) {
-  //     char loc_t = BYTE();
-  //     int arg = INT();
-  //   }
-  //   break;
-  // }
-  //
-  // case BC_CALLC: {
-  //   size_t args = UINT();
-  //   break;
-  // }
-
-  case BC_CALL: {
-    size_t args = UINT();
-    size_t dest = UINT();
-    return (Func<BC_CALL, size_t, size_t> (bf))({ip - 9, ip}, "CALL", args, dest);
+  case BC_DUP: {
+    return (Func<BC_DUP> (bf))({ip - 1, ip}, "DUP");
   }
 
-  // case BC_TAG: {
-  //   const char* tag = get_string(bf, UINT());
-  //   int args = INT();
-  //   break;
-  // }
-  //
-  // case BC_ARRAY: {
-  //   int sz = INT();
-  //   break;
-  // }
-  //
-  // case BC_FAIL: {
-  //   int line = INT();
-  //   int col = INT();
-  //   break;
-  // }
+  case BC_SWAP: {
+    return (Func<BC_SWAP> (bf))({ip - 1, ip}, "SWAP");
+  }
+
+  case BC_ELEM: {
+    return (Func<BC_ELEM> (bf))({ip - 1, ip}, "ELEM");
+  }
+
+  case BC_CBEGIN: {
+    int args = INT();
+    int locals = INT();
+    return (Func<BC_CBEGIN, size_t, size_t> (bf))({ip - 9, ip}, "CBEGIN", args, locals);
+  }
+
+  case BC_CLOSURE: {
+    size_t dest = UINT();
+    size_t args = UINT();
+    size_t bc_sz = 9;
+    // std::cerr << "HERE " << (void*) dest << ' ' << args << '\n';
+    for (int i = 0; i < args; ++i) {
+      char loc_t = BYTE();
+      int arg = INT();
+      bc_sz += 5;
+    }
+    return (Func<BC_CLOSURE, size_t, size_t> (bf))({ip - bc_sz, ip}, "CLOSURE", dest, args);
+  }
+
+  case BC_CALLC: {
+    size_t args = UINT();
+    return (Func<BC_CALLC, size_t> (bf))({ip - 5, ip}, "CALLC", args);
+  }
+
+  case BC_CALL: {
+    size_t dest = UINT();
+    size_t args = UINT();
+    return (Func<BC_CALL, size_t, size_t> (bf))({ip - 9, ip}, "CALL", dest, args);
+  }
+
+  case BC_TAG: {
+    size_t tag_idx = UINT();
+    size_t args = UINT();
+    return (Func<BC_TAG, size_t, size_t> (bf))({ip - 9, ip}, "TAG", tag_idx, args);
+  }
+
+  case BC_ARRAY: {
+    size_t sz = UINT();
+    return (Func<BC_ARRAY, size_t> (bf))({ip - 5, ip}, "ARRAY", sz);
+  }
+
+  case BC_FAIL: {
+    size_t line = UINT();
+    size_t col = UINT();
+    return (Func<BC_FAIL, size_t, size_t> (bf))({ip - 9, ip}, "FAIL", line, col);
+  }
 
   case BC_LINE: {
-    int line = INT();
-    return (Func<BC_LINE, int> (bf))({ip - 5, ip}, "LINE", line);
+    size_t line = INT();
+    return (Func<BC_LINE, size_t> (bf))({ip - 5, ip}, "LINE", line);
   }
 
   case BC_LREAD: {
@@ -151,20 +156,22 @@ inline T dispatch(bytefile *bf, ip_t ip) {
     return (Func<BC_LWRITE> (bf))({ip, ip}, "CALL Lwrite");
   }
 
-  // case BC_LLENGTH:
-  //   break;
-  //
-  // case BC_LSTRING:
-  //   break;
-  //
-  // case BC_BARRAY: {
-  //   size_t len = UINT();
-  //   break;
-  // }
-  //
-  // case BC_PATT_STR:
-  //   break;
+  case BC_LLENGTH: {
+    return (Func<BC_LLENGTH> (bf))({ip - 1, ip}, "LLENGTH");
+  }
 
+  case BC_LSTRING: {
+    return (Func<BC_LSTRING> (bf))({ip - 1, ip}, "LSTRING");
+  }
+
+  case BC_BARRAY: {
+    size_t sz = UINT();
+    return (Func<BC_BARRAY, size_t> (bf))({ip - 4, ip}, "BARRAY", sz);
+  }
+
+  case BC_PATT_STR: {
+    return (Func<BC_PATT_STR> (bf))({ip - 1, ip}, "PATT_STR");
+  }
 
     default: {
       switch (h) {
@@ -179,22 +186,22 @@ inline T dispatch(bytefile *bf, ip_t ip) {
           return (Func<BC_ST, int> (bf))({ip - 5, ip}, "ST", idx);
         }
 
-        // case BC_STOP: {
-        //   goto stop;
-        // }
+        case BC_STOP: {
+          return (Func<BC_STOP> (bf))({ip - 1, ip}, "STOP");
+        }
 
         case BC_BINOP: {
           return (Func<BC_BINOP> (bf))({ip - 5, ip}, "BINOP");
         }
 
-        // case BC_LDA: {
-        //   int idx = INT();
-        //   break;
-        // }
-        //
-        // case BC_PATT: {
-        //   break;
-        // }
+        case BC_LDA: {
+          size_t idx = INT();
+          return (Func<BC_LDA> (bf))({ip - 5, ip}, "LDA");
+        }
+
+        case BC_PATT: {
+          return (Func<BC_PATT> (bf))({ip - 1, ip}, "PATT");
+        }
 
         default: {
           std::cerr << "Invalid opcode " << (int) h << "-" << (int) l << "\n";
@@ -218,6 +225,11 @@ int main(int argc, char* argv[]) {
   // Traverse to create jump labels & mark reachable code
   while (!ips_to_process.empty()) {
       ip_t ip = ips_to_process.back();
+
+      std::cout << (void*) (ip - bf->code_ptr) << ' ';
+      dispatch<PrintCode, void>(bf, ip);
+      std::cout << '\n';
+
       ips_to_process.pop_back();
       if (bytecode_data[ip].reachable) continue;
       bytecode_data[ip].reachable = true;
@@ -231,12 +243,16 @@ int main(int argc, char* argv[]) {
 
   // Traverse to calculate idioms occurrences
   for (ip_t ip = bf->code_ptr; ip < bf->code_ptr + bf->code_size; ip = dispatch<TakeBytecode, ip_t>(bf, ip)) {
+      std::cout << (void*) (ip - bf->code_ptr) << ' ';
       dispatch<PrintCode, void>(bf, ip);
       std::cout << '\n';
       if (!bytecode_data[ip].reachable) {
         last_insn = {};
-        std::cerr << "Not reachable code found\n";
+        std::cerr << "Warning! Not reachable code found\n";
         continue;
+      }
+      if (bytecode_data[ip].jump_label) {
+        last_insn = {};
       }
 
       ip_t next_ip = dispatch<TakeBytecode, ip_t>(bf, ip);
