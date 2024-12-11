@@ -2,9 +2,12 @@
 #define TAKE_BYTECODE_H
 
 #include "sm_encoding.h"
-#include "bytefile.h"
+#include "util.h"
+#include <iostream>
 
 namespace {
+
+struct bytefile;
 
 template<Bytecodes B, class... Opnds>
 struct PrintCode {

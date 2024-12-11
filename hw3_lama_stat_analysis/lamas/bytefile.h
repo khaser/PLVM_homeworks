@@ -1,6 +1,7 @@
 #ifndef BYTEFILE_H
 #define BYTEFILE_H
 
+#include "take_bytecode.h"
 #include "util.h"
 
 #include <algorithm>
@@ -60,11 +61,11 @@ struct bytefile {
   }
 
 
-  inline int to_offset(const ip_t &ip) {
+  inline int to_offset(const ip_t &ip) const {
     return ip - code_ptr;
   }
 
-  inline ip_t to_ip(const int offset) {
+  inline ip_t to_ip(const int offset) const {
     return code_ptr + offset;
   }
 
