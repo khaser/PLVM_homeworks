@@ -3,6 +3,7 @@
 
 #include "util.h"
 
+#include <algorithm>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
@@ -23,11 +24,11 @@ struct bytefile {
   char   buffer[0];
   /* ^^^ Bytefile structure ^^^ */
 
-  inline bool check_ip(ip_t ip, int sz) {
+  inline bool check_ip(ip_t ip, int sz) const {
     return code_ptr <= ip && ip + sz <= code_ptr + code_size;
   }
 
-  inline void assert_ip(ip_t ip, int sz) {
+  inline void assert_ip(ip_t ip, int sz) const {
     if (unlikely(!check_ip(ip, sz))) {
       std::cerr << "Instruction pointer outer of code bounds.\n" \
                    "IP: " << (void*) ip << "\nCode start: " << (void*) code_ptr << "\n" << \
@@ -49,8 +50,12 @@ struct bytefile {
   inline std::vector<ip_t> get_public_ptrs() const {
     std::vector<ip_t> res(public_symbols_number);
     for (size_t i = 0; i < public_symbols_number; ++i) {
-      res[i] = (ip_t) (public_ptr[2 * i + 1] + code_ptr);
+      ip_t entry = public_ptr[2 * i + 1] + code_ptr;
+      assert_ip(entry, 1);
+      res[i] = entry;
     }
+    std::sort(res.begin(), res.end());
+    res.resize(std::unique(res.begin(), res.end()) - res.begin());
     return res;
   }
 

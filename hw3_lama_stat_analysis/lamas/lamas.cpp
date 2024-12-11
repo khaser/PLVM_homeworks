@@ -226,14 +226,19 @@ int main(int argc, char* argv[]) {
 
   std::vector<ip_t> ips_to_process = bf->get_public_ptrs();
 
+  for (auto ip : ips_to_process) {
+    bytecode_data[ip].jump_label = true;
+  }
+
   // Traverse to create jump labels & mark reachable code
   while (!ips_to_process.empty()) {
       ip_t ip = ips_to_process.back();
       ips_to_process.pop_back();
-      if (bytecode_data[ip].reachable) continue;
-      bytecode_data[ip].reachable = true;
       for (auto cont_ip : dispatch<MarkLabels, std::vector<ip_t>>(bf, ip)) {
-        ips_to_process.push_back(cont_ip);
+        if (!bytecode_data[cont_ip].reachable) {
+          ips_to_process.push_back(cont_ip);
+          bytecode_data[cont_ip].reachable = true;
+        }
       }
   }
 
