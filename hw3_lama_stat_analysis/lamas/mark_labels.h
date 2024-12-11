@@ -11,17 +11,18 @@ struct BytecodeInfo {
   bool reachable;
 };
 
-extern std::unordered_map<ip_t, BytecodeInfo> bytecode_data;
+extern std::vector<BytecodeInfo> bytecode_data;
 
 namespace {
 
 template<Bytecodes B, class... Opnds>
 struct MarkLabels {
-  MarkLabels (const bytefile *bf) {};
+  const ip_t code_ptr;
+  MarkLabels (const bytefile *bf) : code_ptr(bf->code_ptr) {};
   std::vector<ip_t> operator () (code code, const char* str, Opnds... opnds) const {
     ip_t c = code.data() + code.size();
     if (B == BC_END) {
-      bytecode_data[c].jump_label = true;
+      bytecode_data[c - code_ptr].jump_label = true;
     }
     if (B == BC_END || B == BC_STOP) return {};
     else return {c};
@@ -35,7 +36,7 @@ struct MarkLabels<B, size_t> {
   MarkLabels (const bytefile *bf) : code_ptr(bf->code_ptr) {};
   std::vector<ip_t> operator () (code code, const char* str, size_t offset) const {
     ip_t new_ip = code_ptr + offset;
-    bytecode_data[new_ip].jump_label = true;
+    bytecode_data[offset].jump_label = true;
     if (B == BC_JMP) {
       return {new_ip};
     } else {
@@ -51,7 +52,7 @@ struct MarkLabels<B, size_t, size_t> {
   MarkLabels (const bytefile *bf) : code_ptr(bf->code_ptr) {};
   std::vector<ip_t> operator () (code code, const char* str, size_t dest, size_t args) const {
     ip_t new_ip = code_ptr + dest;
-    bytecode_data[new_ip].jump_label = true;
+    bytecode_data[dest].jump_label = true;
     return {code.data() + code.size(), new_ip};
   }
 };

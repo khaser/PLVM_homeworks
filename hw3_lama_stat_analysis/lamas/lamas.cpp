@@ -10,7 +10,7 @@
 #include "mark_labels.h"
 #include "take_bytecode.h"
 
-std::unordered_map<ip_t, BytecodeInfo> bytecode_data;
+std::vector<BytecodeInfo> bytecode_data;
 
 namespace {
 
@@ -225,9 +225,10 @@ int main(int argc, char* argv[]) {
   bytefile *bf = read_file(argv[1]);
 
   std::vector<ip_t> ips_to_process = bf->get_public_ptrs();
+  bytecode_data.resize(bf->code_size);
 
   for (auto ip : ips_to_process) {
-    bytecode_data[ip].jump_label = true;
+    bytecode_data[bf->to_offset(ip)].jump_label = true;
   }
 
   // Traverse to create jump labels & mark reachable code
@@ -235,9 +236,9 @@ int main(int argc, char* argv[]) {
       ip_t ip = ips_to_process.back();
       ips_to_process.pop_back();
       for (auto cont_ip : dispatch<MarkLabels, std::vector<ip_t>>(bf, ip)) {
-        if (!bytecode_data[cont_ip].reachable) {
+        if (!bytecode_data[bf->to_offset(cont_ip)].reachable) {
           ips_to_process.push_back(cont_ip);
-          bytecode_data[cont_ip].reachable = true;
+          bytecode_data[bf->to_offset(cont_ip)].reachable = true;
         }
       }
   }
@@ -250,11 +251,11 @@ int main(int argc, char* argv[]) {
       // std::cout << (void*) (ip - bf->code_ptr) << ' ';
       // dispatch<PrintCode, void>(bf, ip);
       // std::cout << '\n';
-      if (!bytecode_data[ip].reachable) {
+      if (!bytecode_data[bf->to_offset(ip)].reachable) {
         last_insn = {};
         continue;
       }
-      if (bytecode_data[ip].jump_label) {
+      if (bytecode_data[bf->to_offset(ip)].jump_label) {
         last_insn = {};
       }
 

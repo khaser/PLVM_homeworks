@@ -60,6 +60,14 @@ struct bytefile {
   }
 
 
+  inline int to_offset(const ip_t &ip) {
+    return ip - code_ptr;
+  }
+
+  inline ip_t to_ip(const int offset) {
+    return code_ptr + offset;
+  }
+
 };
 
 /* Reads a binary bytecode file by name and unpacks it */
