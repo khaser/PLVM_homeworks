@@ -4,7 +4,7 @@
 #include "take_bytecode.h"
 #include "util.h"
 
-#include <algorithm>
+#include <functional>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
@@ -48,16 +48,12 @@ struct bytefile {
     }
   }
 
-  inline std::vector<ip_t> get_public_ptrs() const {
-    std::vector<ip_t> res(public_symbols_number);
+  inline void call_from_public_ptrs(const std::function<void(ip_t)> &f) const {
     for (size_t i = 0; i < public_symbols_number; ++i) {
       ip_t entry = public_ptr[2 * i + 1] + code_ptr;
       assert_ip(entry, 1);
-      res[i] = entry;
+      f(entry);
     }
-    std::sort(res.begin(), res.end());
-    res.resize(std::unique(res.begin(), res.end()) - res.begin());
-    return res;
   }
 
 
