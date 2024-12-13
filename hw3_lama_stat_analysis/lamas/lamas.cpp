@@ -1,5 +1,4 @@
 #define _GLIBCXX_DEBUG
-
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -14,6 +13,7 @@
 
 bytefile *bf;
 std::vector<BytecodeInfo> bytecode_data;
+const size_t rare_thresh = 15;
 
 namespace {
 
@@ -233,8 +233,8 @@ template<int N>
 struct CodeHash {
   static const size_t A = 4;
   static const size_t B = 543;
-  size_t operator () (int a) const {
-    size_t res = B;
+  unsigned short operator () (int a) const {
+    unsigned short res = B;
     for (auto i : take_code_subseq(a, N)) {
       res = res * A + i; // overflow by powers of two here
     }
@@ -243,36 +243,30 @@ struct CodeHash {
 };
 
 template<int N>
-std::vector<std::pair<int, int>> build_hist(std::vector<std::pair<int, int>> &&starts) {
-  std::vector<std::pair<int, int>> hist;
-
-  auto try_shrink = [&] () {
-    const int MEM_LIMIT = 10 * bf->code_size;
-    int mem_used = sizeof(int) * 2 * (starts.capacity() + hist.capacity());
-    if (unlikely(mem_used >= MEM_LIMIT)) {
-      starts.shrink_to_fit();
-      hist.reserve(MEM_LIMIT / sizeof(int) * 2 - starts.capacity());
-    };
-  };
-
-  auto truthful_cmp = [] (const std::pair<int, int> &a, const std::pair<int, int> &b) {
-    code ac = take_code_subseq(a.first, N);
-    code bc = take_code_subseq(b.first, N);
+void build_hist(
+    std::vector<int> &&starts,
+    const std::vector<unsigned short> &hashes,
+    std::back_insert_iterator<std::vector<std::pair<int, int>>> inserter,
+    std::vector<char> &rare_codes
+) {
+  auto truthful_cmp = [] (int a, int b) {
+    code ac = take_code_subseq(a, N);
+    code bc = take_code_subseq(b, N);
     return std::lexicographical_compare(ac.begin(), ac.end(), bc.begin(), bc.end());
   };
 
-  auto is_not_equal = [&truthful_cmp] (const std::pair<int, int> &a, const std::pair<int, int> &b) {
-    code ac = take_code_subseq(a.first, N);
-    code bc = take_code_subseq(b.first, N);
+  auto is_not_equal = [&truthful_cmp] (int a, int b) {
+    code ac = take_code_subseq(a, N);
+    code bc = take_code_subseq(b, N);
     return !std::equal(ac.begin(), ac.end(), bc.begin(), bc.end());
   };
 
   // sort by hash
-  std::sort(starts.begin(), starts.end(), [] (const auto &a, const auto &b) { return a.second < b.second; });
+  std::sort(starts.begin(), starts.end(), [&hashes] (int a, int b) { return hashes[a] < hashes[b]; });
 
   while (!starts.empty()) {
-    int bucket_sz = std::adjacent_find(starts.rbegin(), starts.rend(), [] (const auto &a, const auto &b) {
-      return a.second != b.second;
+    int bucket_sz = std::adjacent_find(starts.rbegin(), starts.rend(), [&hashes] (int a, int b) {
+      return hashes[a] != hashes[b];
     }) - starts.rbegin() + 1;
     bucket_sz = std::min(bucket_sz, (int) starts.size());
 
@@ -283,13 +277,14 @@ std::vector<std::pair<int, int>> build_hist(std::vector<std::pair<int, int>> &&s
       count = std::min(count, bucket_sz);
       bucket_sz -= count;
 
-      hist.emplace_back(starts.back().first, count);
+      if (count <= rare_thresh) {
+        rare_codes[starts.back()] |= (count & 0xf) << (N == 2 ? 4 : 0);
+      } else {
+        inserter = std::make_pair((N == 2 ? -1 : 1) * starts.back(), count);
+      }
       starts.resize(starts.size() - count);
-      try_shrink();
     }
   }
-
-  return hist;
 };
 
 } // anon namespace
@@ -326,9 +321,16 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  // Value:
+  // > 0 for single code idiom
+  // < 0 for idiom-pairs
+  std::vector<char> rare_codes(bf->code_size, 0);
+  std::vector<std::pair<int, int>> hist;
+
   {
     CodeHash<1> hasher;
-    std::vector<std::pair<int, int>> starts;
+    std::vector<int> starts;
+    std::vector<unsigned short> hashes(bf->code_size);
 
     // Traverse to calculate idiom occurrences
     for (ip_t ip = bf->code_ptr; ip < bf->code_ptr + bf->code_size; ) {
@@ -337,24 +339,19 @@ int main(int argc, char* argv[]) {
           continue;
         }
         int offset = bf->to_offset(ip);
-        starts.emplace_back(offset, hasher(offset));
+        starts.emplace_back(offset);
+        hashes[offset] = hasher(offset);
         ip += bytecode_data[bf->to_offset(ip)].get_size();
     }
 
-    std::vector<std::pair<int, int>> v_stats = build_hist<1>(std::move(starts));
-    std::sort(v_stats.begin(), v_stats.end(), [] (const auto &a, const auto &b) { return a.second > b.second; });
-
-    std::cout << "Single idioms occurrences:\n";
-    for (auto [k, v] : v_stats) {
-      dispatch<PrintCode, void>(bf->to_ip(k));
-      std::cout << ": " << v << '\n';
-    }
+    build_hist<1>(std::move(starts), hashes, std::back_inserter(hist), rare_codes);
   }
 
   {
-    std::vector<std::pair<int, int>> pair_starts;
-    std::optional<ip_t> prev_ip;
     CodeHash<2> hasher;
+    std::vector<int> pair_starts;
+    std::vector<unsigned short> hashes(bf->code_size);
+    std::optional<ip_t> prev_ip;
 
     // Traverse to calculate idiom-pairs occurrences
     for (ip_t ip = bf->code_ptr; ip < bf->code_ptr + bf->code_size; ) {
@@ -363,30 +360,51 @@ int main(int argc, char* argv[]) {
           ip++;
           continue;
         }
-        // std::cout << (void*) (ip - bf->code_ptr) << ' ';
-        // dispatch<PrintCode, void>(bf, ip);
-        // std::cout << '\n';
-
         if (bytecode_data[bf->to_offset(ip)].is_cf_entry()) {
           prev_ip = {};
         }
         if (prev_ip) {
           int prev_ip_offset = bf->to_offset(*prev_ip);
-          pair_starts.emplace_back(prev_ip_offset, hasher(prev_ip_offset));
+          pair_starts.emplace_back(prev_ip_offset);
+          hashes[prev_ip_offset] = hasher(prev_ip_offset);
         }
         prev_ip = ip;
         ip += bytecode_data[bf->to_offset(ip)].get_size();
     }
 
-    std::vector<std::pair<int, int>> v_pair_stats = build_hist<2>(std::move(pair_starts));
-    std::sort(v_pair_stats.begin(), v_pair_stats.end(), [] (const auto &a, const auto &b) { return a.second > b.second; });
+    build_hist<2>(std::move(pair_starts), hashes, std::back_inserter(hist), rare_codes);
+  }
 
-    std::cout << "\nIdiom-pairs occurrences:\n";
-    for (auto [k, v] : v_pair_stats) {
-      dispatch<PrintCode, void>(bf->to_ip(k));
+  std::sort(hist.begin(), hist.end(), [] (const auto &a, const auto &b) { return a.second > b.second; });
+
+  auto print_opcode = [] (int offset, int v) {
+    ip_t ip = bf->to_ip(offset);
+    if (v < 0) {
+      dispatch<PrintCode, void>(ip);
       std::cout << "+ ";
-      dispatch<PrintCode, void>(bf->to_ip(k) + bytecode_data[k].get_size());
-      std::cerr << ": " << v << '\n';
+      dispatch<PrintCode, void>(ip + bytecode_data[offset].get_size());
+      std::cerr << ": " << -v << '\n';
+    } else {
+      dispatch<PrintCode, void>(ip);
+      std::cout << ": " << v << '\n';
+    }
+  };
+
+  for (auto [k, v] : hist) {
+    print_opcode(k, v);
+  }
+
+  for (int v = rare_thresh; v > 0; --v) {
+    for (int offset = 0; offset < bf->code_size; ++offset) {
+      char x = rare_codes[offset];
+      if (x & 0xf0) {
+        char xx = ((x >> 4) & 0x0f);
+        if (xx == v) print_opcode(offset, -xx);
+      }
+      if (x & 0x0f) {
+        char xx = x & 0x0f;
+        if (xx == v) print_opcode(offset, xx);
+      }
     }
   }
 
