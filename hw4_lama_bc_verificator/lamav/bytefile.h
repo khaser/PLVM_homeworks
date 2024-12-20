@@ -38,6 +38,10 @@ struct bytefile {
     }
   }
 
+  inline void assert_offset(int offset, int sz) const {
+    assert_ip(to_ip(offset), sz);
+  }
+
   inline const char* get_string(size_t pos) const {
     if (pos < stringtab_size) {
       return &string_ptr[pos];

@@ -24,8 +24,39 @@ inline bool check_reachable(int offset, int stack_sz, std::vector<BcData> &bc_da
   return false;
 }
 
-#define DEBUG do { dispatch<PrintCode, void>(offset, bf);\
-                   std::cout << ' ' << stack_sz << '\n'; } while (0);
+inline void check_loc(const BcLoc &loc, const BcFunction &fun) {
+  switch (loc.type) {
+    case GLOBAL:
+      // TODO: validate global variables
+      return;
+    case LOCAL:
+      if (loc.idx >= fun.locals) {
+        std::cout << "Invalid local " << loc.idx << " inside function " << fun.begin << \
+                      "\nwhich contains only " << fun.locals << " locals\n";
+        exit(1);
+      }
+      return;
+    case ARGUMENT:
+      if (loc.idx >= fun.args) {
+        std::cout << "Invalid argument " << loc.idx << " inside function " << fun.begin << \
+                      "\nwhich contains only " << fun.args << " arguments\n";
+        exit(1);
+      }
+      return;
+    case CAPTURED:
+      if (loc.idx >= fun.captured) {
+        std::cout << "Invalid location " << loc.idx << " inside closure " << fun.begin << '\n';
+        exit(1);
+      }
+      return;
+    default:
+      std::cout << "Unsupported memory operation operand type: " << (int) loc.type << '\n';
+      exit(1);
+  }
+}
+
+#define DEBUG do { std::cout << std::hex << offset << ' '; dispatch<PrintCode, void>(offset, bf);\
+                   std::cout << stack_sz << '\n'; } while (0);
 
 template<Bytecodes B, class... Opnds>
 struct VerifyBytecode {
@@ -112,6 +143,7 @@ struct VerifyBytecode<B, int> {
 
     DEBUG
 
+    bf->assert_offset(offset, 1);
     if (B == BC_JMP) {
       dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, stack_sz + STACK_SZ_DELTA(B), cur_fun, bf);
     } else {
@@ -122,7 +154,7 @@ struct VerifyBytecode<B, int> {
 };
 
 template<Bytecodes B>
-requires (B == BC_CALL || B == BC_CLOSURE)
+requires (B == BC_CALL)
 struct VerifyBytecode<B, int, int> {
   void operator () (int offset, int sz, const char* str,
                     std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs,
@@ -138,18 +170,66 @@ struct VerifyBytecode<B, int, int> {
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz - args + 1, cur_fun, bf);
 
-    if (B == BC_CALL && bf->code_ptr[label_offset] != BC_BEGIN) {
-        std::cout << "Call on offset " << std::hex << offset << " does not refer to BEGIN bytecode" << '\n';
-        exit(1);
+    if (bf->code_ptr[label_offset] != BC_BEGIN) {
+      std::cout << "Call on offset " << std::hex << offset << " does not refer to BEGIN bytecode" << '\n';
+      exit(1);
     }
-    // Standard compiler generates ill formatted code
-    // if (B == BC_CLOSURE && bf->code_ptr[label_offset] != BC_CBEGIN) {
-    //     std::cout << "Closure on offset " << std::hex << offset << " does not refer to CBEGIN bytecode" << '\n';
-    //     exit(1);
-    // }
+
     dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, 0, BcFunction {}, bf);
   }
 };
+
+template<Bytecodes B>
+requires (B == BC_CLOSURE)
+struct VerifyBytecode<B, int, int, std::vector<BcLoc>> {
+  void operator () (int offset, int sz, const char* str,
+                    std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs,
+                    int stack_sz, BcFunction &cur_fun, bytefile* bf,
+                    int label_offset, int args, std::vector<BcLoc> capture) const {
+
+    if (check_reachable(offset, stack_sz, bc_data)) return;
+
+    cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
+    cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
+
+    DEBUG
+
+    for (auto &loc : capture) {
+      check_loc(loc, cur_fun);
+    }
+
+    dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz + STACK_SZ_DELTA(BC_CLOSURE), cur_fun, bf);
+
+    // Upstream compiler produces ill formatted code
+    // if (B == BC_CLOSURE && bf->code_ptr[label_offset] != BC_CBEGIN) {
+    //   std::cout << "Closure on offset " << std::hex << offset << " does not refer to CBEGIN bytecode" << '\n';
+    //   exit(1);
+    // }
+
+    dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, 0,
+                                   BcFunction { .captured=static_cast<int>(capture.size()) }, bf);
+  }
+};
+
+template<Bytecodes B>
+requires (B == BC_CALLC)
+struct VerifyBytecode<B, int> {
+  void operator () (int offset, int sz, const char* str,
+                    std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs,
+                    int stack_sz, BcFunction &cur_fun, bytefile* bf,
+                    int args) const {
+
+    if (check_reachable(offset, stack_sz, bc_data)) return;
+
+    cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
+    cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
+
+    DEBUG
+
+    dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz - args, cur_fun, bf);
+  }
+};
+
 
 template<Bytecodes B>
 requires (B == BC_BEGIN || B == BC_CBEGIN)
@@ -157,7 +237,7 @@ struct VerifyBytecode<B, int, int> {
   void operator () (int offset, int sz, const char* str,
                     std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs,
                     int stack_sz, BcFunction &cur_fun, bytefile* bf,
-                    int args, int _locals) const {
+                    int args, int locals) const {
 
     if (check_reachable(offset, 0, bc_data)) return;
 
@@ -165,6 +245,7 @@ struct VerifyBytecode<B, int, int> {
 
     cur_fun.begin = offset;
     cur_fun.args = args;
+    cur_fun.locals = locals;
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, args, cur_fun, bf);
     bc_funcs.push_back(cur_fun);
@@ -172,11 +253,26 @@ struct VerifyBytecode<B, int, int> {
   }
 };
 
-} // anon namespace
+template<Bytecodes B>
+requires (B == BC_LD || B == BC_ST || B == BC_LDA)
+struct VerifyBytecode<B, BcLoc> {
+  void operator () (int offset, int sz, const char* str,
+                    std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs,
+                    int stack_sz, BcFunction &cur_fun, bytefile* bf,
+                    BcLoc loc) const {
 
-void verify_entrypoint(int offset, bytefile* bf,
-                       std::vector<BcData> &bc_data, std::vector<BcFunction> &bc_funcs) {
-  dispatch<VerifyBytecode, void>(offset, bf, bc_data, bc_funcs, 0, BcFunction {}, bf);
-}
+    if (check_reachable(offset, stack_sz, bc_data)) return;
+
+    DEBUG
+
+    check_loc(loc, cur_fun);
+
+    cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
+    cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
+    dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz + STACK_SZ_DELTA(B), cur_fun, bf);
+  }
+};
+
+} // anon namespace
 
 #endif

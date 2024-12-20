@@ -12,7 +12,7 @@ template<
 >
 inline T dispatch(int bc_offset, bytefile* bf, Opnds ...opnds) {
 
-#define GENERIC_IP_PEEK(type) (bf->assert_ip(ip, sizeof(type)), ip += sizeof(type), *(type*)(ip - sizeof(type)))
+#define GENERIC_IP_PEEK(type) (ip += sizeof(type), *(type*)(ip - sizeof(type)))
 #define INT()    (GENERIC_IP_PEEK(int))
 #define REF()    (GENERIC_IP_PEEK(int*))
 #define BYTE()   (GENERIC_IP_PEEK(unsigned char))
@@ -103,12 +103,14 @@ inline T dispatch(int bc_offset, bytefile* bf, Opnds ...opnds) {
     int dest = INT();
     int args = INT();
     int bc_sz = 9;
+    std::vector<BcLoc> capture;
     for (int i = 0; i < args; ++i) {
       char loc_t = BYTE();
       int arg = INT();
+      capture.emplace_back(loc_t, arg);
       bc_sz += 5;
     }
-    return Func<BC_CLOSURE, int, int>()(bc_offset, bc_sz, "CLOSURE", opnds..., dest, args);
+    return Func<BC_CLOSURE, int, int, std::vector<BcLoc>>()(bc_offset, bc_sz, "CLOSURE", opnds..., dest, args, capture);
   }
 
   case BC_CALLC: {
@@ -174,12 +176,12 @@ inline T dispatch(int bc_offset, bytefile* bf, Opnds ...opnds) {
 
         case BC_LD: {
           int idx = INT();
-          return Func<BC_LD, int>()(bc_offset, 5, "LD", opnds..., idx);
+          return Func<BC_LD, BcLoc>()(bc_offset, 5, "LD", opnds..., {l, idx});
         }
 
         case BC_ST: {
           int idx = INT();
-          return Func<BC_ST, int>()(bc_offset, 5, "ST", opnds..., idx);
+          return Func<BC_ST, BcLoc>()(bc_offset, 5, "ST", opnds..., {l, idx});
         }
 
         case BC_STOP: {
@@ -192,7 +194,7 @@ inline T dispatch(int bc_offset, bytefile* bf, Opnds ...opnds) {
 
         case BC_LDA: {
           int idx = INT();
-          return Func<BC_LDA>()(bc_offset, 5, "LDA", opnds...);
+          return Func<BC_LDA, BcLoc>()(bc_offset, 5, "LDA", opnds..., {l, idx});
         }
 
         case BC_PATT: {
