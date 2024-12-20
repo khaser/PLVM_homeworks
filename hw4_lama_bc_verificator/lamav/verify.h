@@ -62,6 +62,9 @@ inline void check_loc(const BcLoc &loc, const BcFunction &fun, int n_globals) {
 #define DEBUG do { std::cout << std::hex << offset << ' '; dispatch<PrintCode, void>(offset, bf);\
                    std::cout << stack_sz << '\n'; } while (0);
 
+// #undef DEBUG
+// #define DEBUG
+
 template<Bytecodes B, class... Opnds>
 struct VerifyBytecode {
   void operator () (int offset, int sz, const char* str,
@@ -179,7 +182,9 @@ struct VerifyBytecode<B, int, int> {
       exit(1);
     }
 
-    dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, 0, BcFunction {}, bf);
+    int callee_stack_sz = 0;
+    BcFunction callee {};
+    dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, callee_stack_sz, callee, bf);
   }
 };
 
@@ -210,8 +215,9 @@ struct VerifyBytecode<B, int, int, std::vector<BcLoc>> {
     //   exit(1);
     // }
 
-    dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, 0,
-                                   BcFunction { .captured=static_cast<int>(capture.size()) }, bf);
+    int cls_stack_sz = 0;
+    BcFunction cls_fun { .captured=static_cast<int>(capture.size()) };
+    dispatch<VerifyBytecode, void>(label_offset, bf, bc_data, bc_funcs, cls_stack_sz, cls_fun, bf);
   }
 };
 
@@ -253,7 +259,6 @@ struct VerifyBytecode<B, int, int> {
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, args, cur_fun, bf);
     bc_funcs.push_back(cur_fun);
-
   }
 };
 

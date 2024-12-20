@@ -16,7 +16,7 @@ namespace {
 struct bytefile {
   const char* string_ptr;         /* A pointer to the beginning of the string table */
   const int*  public_ptr;         /* A pointer to the beginning of publics table    */
-  const unsigned char* code_ptr;           /* A pointer to the bytecode itself               */
+  unsigned char* code_ptr;           /* A pointer to the bytecode itself               */
   size_t      code_size;          /* The size (in bytes) of the bytecode section    */
   /* ^^^ Custom fields ^^^ */
   size_t stringtab_size;          /* The size (in bytes) of the string table        */

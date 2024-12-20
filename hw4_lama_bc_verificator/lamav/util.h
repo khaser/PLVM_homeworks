@@ -7,7 +7,7 @@
 #include <ostream>
 #include <vector>
 
-using ip_t = const unsigned char*;
+using ip_t = unsigned char*;
 
 struct BcFunction {
   int begin, end;

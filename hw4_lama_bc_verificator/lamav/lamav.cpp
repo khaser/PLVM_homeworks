@@ -2,7 +2,7 @@
 #include <vector>
 #include <span>
 #include <functional>
-#include <optional>
+#include <utility>
 
 #include "bytefile.h"
 #include "sm_encoding.h"
@@ -16,11 +16,24 @@ int main(int argc, char* argv[]) {
   std::vector<BcFunction> bc_funcs;
 
   for (auto offset : bf->public_offsets()) {
-    dispatch<VerifyBytecode, void>(offset, bf, bc_data, bc_funcs, 0, BcFunction {}, bf);
+    int zero = 0;
+    BcFunction fun {};
+    dispatch<VerifyBytecode, void>(offset, bf, bc_data, bc_funcs, zero, fun, bf);
   }
 
+  std::cout << "Reachable functions report:\n";
+  std::cout << "Begin\tEnd\tMin st.\tMax st.\tArguments\n";
   for (auto fun : bc_funcs) {
-    std::cout << std::hex << fun.begin << ' ' << fun.end << ' ' << std::dec << fun.min_rel_st_size << '\n';
+    std::cout << std::hex << fun.begin << '\t' << fun.end << '\t' << \
+                 std::dec << fun.min_rel_st_size << '\t' << fun.max_rel_st_size << '\t' << \
+                 fun.args << '\n';
+    if (fun.min_rel_st_size < 0) {
+      std::cout << "Stack overflow detected in function " << fun.begin << '\n';
+      exit(1);
+    }
+
+    // Write extra stack space required to call this function
+    *(short*)(bf->code_ptr + fun.begin + 2) = fun.max_rel_st_size - fun.args;
   }
 
   // Interpretation
