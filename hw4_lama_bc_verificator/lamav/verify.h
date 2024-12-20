@@ -24,10 +24,14 @@ inline bool check_reachable(int offset, int stack_sz, std::vector<BcData> &bc_da
   return false;
 }
 
-inline void check_loc(const BcLoc &loc, const BcFunction &fun) {
+inline void check_loc(const BcLoc &loc, const BcFunction &fun, int n_globals) {
   switch (loc.type) {
     case GLOBAL:
-      // TODO: validate global variables
+      if (loc.idx >= n_globals) {
+        std::cout << "Invalid global index " << loc.idx << "while the global" << \
+                      "\nsection contains only " << n_globals << " words\n";
+        exit(1);
+      }
       return;
     case LOCAL:
       if (loc.idx >= fun.locals) {
@@ -195,7 +199,7 @@ struct VerifyBytecode<B, int, int, std::vector<BcLoc>> {
     DEBUG
 
     for (auto &loc : capture) {
-      check_loc(loc, cur_fun);
+      check_loc(loc, cur_fun, bf->global_area_size);
     }
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz + STACK_SZ_DELTA(BC_CLOSURE), cur_fun, bf);
@@ -265,7 +269,7 @@ struct VerifyBytecode<B, BcLoc> {
 
     DEBUG
 
-    check_loc(loc, cur_fun);
+    check_loc(loc, cur_fun, bf->global_area_size);
 
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
