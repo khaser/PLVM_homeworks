@@ -1,0 +1,12 @@
+*~
+*.cmi
+*.cmx
+*.cmo
+*.o
+.merlin
+
+.vscode
+
+.direnv
+.envrc
+_build
