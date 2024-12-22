@@ -4,10 +4,12 @@
 #define likely(x)       __builtin_expect(!!(x), 1)
 #define unlikely(x)     __builtin_expect(!!(x), 0)
 
-#include <ostream>
+#include <iostream>
 #include <vector>
 
-using ip_t = unsigned char*;
+#include "sm_encoding.h"
+
+using ip_t = const unsigned char*;
 
 struct BcFunction {
   int begin, end;
@@ -30,5 +32,17 @@ struct BcLoc {
 
 std::ostream& operator << (std::ostream &stream, const BcLoc &loc);
 std::ostream& operator << (std::ostream &stream, const std::vector<BcLoc> &locs);
+
+namespace {
+
+template<Bytecodes B, class... Opnds>
+struct PrintCode {
+  void operator () (int offset, int sz, const char* str, Opnds... opnds) const {
+    std::cout << str << ' ';
+    ((std::cout << std::forward<Opnds>(opnds) << " "), ...);
+  }
+};
+
+} // anon namespace
 
 #endif

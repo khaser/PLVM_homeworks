@@ -5,12 +5,17 @@
 #include "bytefile.h"
 #include "dispatch.h"
 
-#include <unordered_map>
-
 namespace {
 /*
  * Return all theoretically possible next insn offsets and current insn bytecode enum
  */
+
+#ifdef DEBUG
+#define DEBUG_OUTPUT do { std::cout << std::hex << offset << ' '; dispatch<PrintCode, void>(offset, bf);\
+                   std::cout << stack_sz << '\n'; } while (0);
+#else
+#define DEBUG_OUTPUT
+#endif
 
 inline bool check_reachable(int offset, int stack_sz, std::vector<BcData> &bc_data) {
   if (bc_data[offset].reachable) {
@@ -59,12 +64,6 @@ inline void check_loc(const BcLoc &loc, const BcFunction &fun, int n_globals) {
   }
 }
 
-#define DEBUG do { std::cout << std::hex << offset << ' '; dispatch<PrintCode, void>(offset, bf);\
-                   std::cout << stack_sz << '\n'; } while (0);
-
-// #undef DEBUG
-// #define DEBUG
-
 template<Bytecodes B, class... Opnds>
 struct VerifyBytecode {
   void operator () (int offset, int sz, const char* str,
@@ -74,7 +73,7 @@ struct VerifyBytecode {
 
     if (check_reachable(offset, stack_sz, bc_data)) return;
 
-    DEBUG
+    DEBUG_OUTPUT
 
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
@@ -105,7 +104,7 @@ struct VerifyBytecode<B, int> {
 
     if (check_reachable(offset, stack_sz, bc_data)) return;
 
-    DEBUG
+    DEBUG_OUTPUT
 
     int new_sz = stack_sz - array_sz + 1;
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, new_sz);
@@ -125,7 +124,7 @@ struct VerifyBytecode<B, int, int> {
 
     if (check_reachable(offset, stack_sz, bc_data)) return;
 
-    DEBUG
+    DEBUG_OUTPUT
 
     int new_sz = stack_sz - tag_sz + 1;
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, new_sz);
@@ -148,7 +147,7 @@ struct VerifyBytecode<B, int> {
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
 
-    DEBUG
+    DEBUG_OUTPUT
 
     bf->assert_offset(offset, 1);
     if (B == BC_JMP) {
@@ -173,7 +172,7 @@ struct VerifyBytecode<B, int, int> {
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
 
-    DEBUG
+    DEBUG_OUTPUT
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz - args + 1, cur_fun, bf);
 
@@ -201,7 +200,7 @@ struct VerifyBytecode<B, int, int, std::vector<BcLoc>> {
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
 
-    DEBUG
+    DEBUG_OUTPUT
 
     for (auto &loc : capture) {
       check_loc(loc, cur_fun, bf->global_area_size);
@@ -234,7 +233,7 @@ struct VerifyBytecode<B, int> {
     cur_fun.min_rel_st_size = std::min(cur_fun.min_rel_st_size, stack_sz + STACK_SZ_OVERFLOW(B));
     cur_fun.max_rel_st_size = std::max(cur_fun.max_rel_st_size, stack_sz + STACK_SZ_DELTA(B));
 
-    DEBUG
+    DEBUG_OUTPUT
 
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz - args, cur_fun, bf);
   }
@@ -251,7 +250,7 @@ struct VerifyBytecode<B, int, int> {
 
     if (check_reachable(offset, 0, bc_data)) return;
 
-    DEBUG
+    DEBUG_OUTPUT
 
     cur_fun.begin = offset;
     cur_fun.args = args;
@@ -272,7 +271,7 @@ struct VerifyBytecode<B, BcLoc> {
 
     if (check_reachable(offset, stack_sz, bc_data)) return;
 
-    DEBUG
+    DEBUG_OUTPUT
 
     check_loc(loc, cur_fun, bf->global_area_size);
 
@@ -281,6 +280,10 @@ struct VerifyBytecode<B, BcLoc> {
     dispatch<VerifyBytecode, void>(offset + sz, bf, bc_data, bc_funcs, stack_sz + STACK_SZ_DELTA(B), cur_fun, bf);
   }
 };
+
+#ifdef DEBUG
+#undef DEBUG_OUTPUT
+#endif
 
 } // anon namespace
 

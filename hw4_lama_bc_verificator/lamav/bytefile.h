@@ -1,7 +1,6 @@
 #ifndef BYTEFILE_H
 #define BYTEFILE_H
 
-#include "take_bytecode.h"
 #include "util.h"
 
 #include <functional>
@@ -42,7 +41,7 @@ struct bytefile {
     assert_ip(to_ip(offset), sz);
   }
 
-  inline const char* get_string(size_t pos) const {
+  inline const char* get_string(int pos) const {
     if (pos < stringtab_size) {
       return &string_ptr[pos];
     } else {
@@ -117,7 +116,7 @@ inline bytefile* read_file(const char* fname) {
   file->public_ptr = (int*) file->buffer;
   size_t code_offset = stringtab_offset + file->stringtab_size;
   if (code_offset < size) {
-    file->code_ptr = (ip_t) file->buffer + code_offset;
+    file->code_ptr = (unsigned char*) file->buffer + code_offset;
     file->code_size = size - 3 * sizeof(size_t) - code_offset - 1;
   } else {
     std::cerr << "Code section can't be found in file.\n" << \

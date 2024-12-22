@@ -1,6 +1,8 @@
 #ifndef SM_ENCODING_H
 #define SM_ENCODING_H
 
+#include "./interpret/runtime_externs.h"
+
 enum LocTypes {
     GLOBAL,
     LOCAL,
@@ -150,5 +152,6 @@ enum Bytecodes {
   DEF(10, !=)\
   DEF(11, &&)\
   DEF(12, ||)
+
 
 #endif
