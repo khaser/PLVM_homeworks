@@ -10,6 +10,16 @@
 #include "sm_encoding.h"
 #include "vstack.h"
 
+struct timespec getClock() {
+   struct timespec tp;
+   clock_gettime(CLOCK_MONOTONIC, &tp);
+   return tp;
+}
+
+long long diffClock(const struct timespec a, const struct timespec b) {
+   return (a.tv_sec - b.tv_sec) * 1e9 + (a.tv_nsec - b.tv_nsec);
+}
+
 /* The unpacked representation of bytecode file */
 typedef struct {
   const char* string_ptr;         /* A pointer to the beginning of the string table */
@@ -121,6 +131,8 @@ static inline __attribute__((always_inline)) int* resolve_loc(const struct frame
 
 int main (int argc, char* argv[]) {
   bytefile* bf = read_file(argv[1]);
+
+  struct timespec startup = getClock();
 
   /* Init GC */
   __init();
@@ -395,6 +407,9 @@ int main (int argc, char* argv[]) {
   }
   while (1);
   stop:
+
+  long long time_ns = diffClock(getClock(), startup);
+  printf("Interpretation time:\t%lld[ns]\n", time_ns);
 
   return 0;
 }
