@@ -175,9 +175,14 @@ int interpret(bytefile *bf, char* filename) {
 
     case BC_BEGIN:
     case BC_CBEGIN: {
-      int args = INT();
+      int eargs = INT();
+      int stack_bloating = eargs & 0xffff0000;
+      int args = eargs & 0x0000ffff;
       int locals = INT();
       ALLOC(locals);
+      if (stack_bloating > STACK_FREE_SPACE) {
+          failure("Not enough stack size to execute the code");
+      }
       cur_frame->locals = locals;
       break;
     }

@@ -17,5 +17,7 @@ extern size_t* __gc_stack_bottom;
                       memset(__gc_stack_top + 1, 0, n * sizeof(size_t)); \
                  } while (0)
 #define TRUNC(n) (__gc_stack_top += (n))
+#define STACK_SZ (__gc_stack_bottom - __gc_stack_top - 1)
+#define STACK_FREE_SPACE (MAX_VSTACK_SZ - STACK_SZ)
 
 #endif

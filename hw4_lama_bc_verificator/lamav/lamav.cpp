@@ -27,10 +27,13 @@ int main(int argc, char* argv[]) {
 #ifdef DEBUG
   std::cout << "Reachable functions report:\n";
   std::cout << "Begin\tEnd\tMin st.\tMax st.\tArguments\n";
+#endif
   for (auto fun : bc_funcs) {
+#ifdef DEBUG
     std::cout << std::hex << fun.begin << '\t' << fun.end << '\t' << \
                  std::dec << fun.min_rel_st_size << '\t' << fun.max_rel_st_size << '\t' << \
                  fun.args << '\n';
+#endif
     if (fun.min_rel_st_size < 0) {
       failure("Stack overflow detected in function %08x", fun.begin);
     }
@@ -38,7 +41,6 @@ int main(int argc, char* argv[]) {
     // Write extra stack space required to call this function
     *(short*)(bf->code_ptr + fun.begin + 2) = fun.max_rel_st_size - fun.args;
   }
-#endif
 
   int ret = interpret(bf, argv[1]);
   std::chrono::steady_clock::time_point interpret_finish = std::chrono::steady_clock::now();
