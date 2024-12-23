@@ -12,6 +12,9 @@ all:
 	$(MAKE) -C runtime invariants_check.o
 	$(MAKE) -C runtime invariants_check_debug_print.o
 
+regression:
+	$(MAKE) clean check -j8 -C regression
+
 STD_FILES=$(shell ls stdlib/*.[oi] stdlib/*.lama runtime/runtime.a runtime/Std.i)
 
 install: all

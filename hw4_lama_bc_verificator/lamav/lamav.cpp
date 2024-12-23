@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   auto verify_time = std::chrono::duration_cast<std::chrono::nanoseconds>(verify_finish - startup).count();
   auto interpret_time = std::chrono::duration_cast<std::chrono::nanoseconds>(interpret_finish - verify_finish).count();
 
-  std::cout << "Validation time:\t" << verify_time << "[ns]\n";
-  std::cout << "Interpretation time:\t" << interpret_time << "[ns]\n";
+  std::cerr << "Validation time:\t" << verify_time << "[ns]\n";
+  std::cerr << "Interpretation time:\t" << interpret_time << "[ns]\n";
   return ret;
 }
