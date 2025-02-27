@@ -29,10 +29,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 
 import khaser.lama.parser.LamaParser;
+import khaser.lama.LamaContext;
 
 @TruffleLanguage.Registration(id = LamaLanguage.ID,
                               name = "Lama")
-public final class LamaLanguage extends TruffleLanguage<Void> {
+public final class LamaLanguage extends TruffleLanguage<LamaContext> {
     public static final String ID = "lama";
 
     public LamaLanguage() {
@@ -44,7 +45,7 @@ public final class LamaLanguage extends TruffleLanguage<Void> {
     }
 
     @Override
-    protected Void createContext(Env env) {
-        return null;
+    protected LamaContext createContext(Env env) {
+        return new LamaContext();
     }
 }

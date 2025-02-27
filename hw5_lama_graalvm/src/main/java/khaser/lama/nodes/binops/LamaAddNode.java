@@ -12,9 +12,9 @@ public class LamaAddNode extends LamaBinopNode {
         super(leftNode, rightNode);
     }
 
-    public int execInt(VirtualFrame frame) {
-        int leftValue = this.leftNode.execInt(frame);
-        int rightValue = this.rightNode.execInt(frame);
+    public Integer execute(VirtualFrame frame) {
+        Integer leftValue = this.leftNode.execute(frame);
+        Integer rightValue = this.rightNode.execute(frame);
         return leftValue + rightValue;
     }
 

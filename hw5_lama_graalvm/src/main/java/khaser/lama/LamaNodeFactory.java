@@ -20,11 +20,14 @@ import com.oracle.truffle.api.RootCallTarget;
 
 import khaser.lama.nodes.*;
 import khaser.lama.nodes.binops.*;
+import khaser.lama.nodes.cfg.*;
 import khaser.lama.LamaLanguage;
 
 public class LamaNodeFactory {
 
-    private LamaExprNode curExpr;
+    private LamaScopeNode curScope;
+    private LamaExprNode curScopeExpr = new LamaSkipNode();
+    private ArrayList<LamaDefNode> curScopeDefs = new ArrayList();
 
     public LamaNodeFactory() {
     }
@@ -34,11 +37,9 @@ public class LamaNodeFactory {
             return null;
         }
 
-        final LamaExprNode result;
         switch (opToken.getText()) {
             case "+":
-                result = new LamaAddNode(leftNode, rightNode);
-                break;
+                return new LamaAddNode(leftNode, rightNode);
             // case "-":
             //     result = LamaSubNodeGen.create(leftUnboxed, rightUnboxed);
             //     break;
@@ -48,32 +49,45 @@ public class LamaNodeFactory {
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
-        curExpr = result;
-        return result;
     }
 
     public LamaExprNode createDecimal(Token literalToken) {
         return new LamaIntNode(Integer.parseInt(literalToken.getText()));
     }
 
-    public RootCallTarget getCallTarget() {
-        var rootNode = new LamaRootNode(curExpr);
-        return rootNode.getCallTarget();
+    public void addScopeDefs(List<LamaDefNode> defs) {
+        System.out.println("Scope defs added\n");
+        curScopeDefs.addAll(defs);
     }
 
-    // public LamaExprNode createReadProperty(SLExpressionNode receiverNode, SLExpressionNode nameNode) {
-    //     if (receiverNode == null || nameNode == null) {
-    //         return null;
-    //     }
-    //
-    //     final SLExpressionNode result = SLReadPropertyNodeGen.create(receiverNode, nameNode);
-    //
-    //     final int startPos = receiverNode.getSourceCharIndex();
-    //     final int endPos = nameNode.getSourceEndIndex();
-    //     result.setSourceSection(startPos, endPos - startPos);
-    //     result.addExpressionTag();
-    //
-    //     return result;
-    // }
+    public void setScopeExpr(LamaExprNode expr) {
+        System.out.println("Scope expr added\n");
+        curScopeExpr = expr;
+    }
+
+    public LamaScopeNode createScope() {
+        curScope = new LamaScopeNode(curScopeDefs.toArray(new LamaDefNode[0]), curScopeExpr);
+        curScopeDefs = new ArrayList();
+        curScopeExpr = new LamaSkipNode();
+        System.out.println("New scope created\n");
+        return curScope;
+    }
+
+    public LamaDefNode createDef(Token sym, LamaExprNode expr) {
+        return new LamaDefNode(sym.getText(), expr);
+    }
+
+    public LamaDefNode createDef(Token sym) {
+        return createDef(sym, new LamaIntNode(0));
+    }
+
+    public LamaReadNode createRead(Token sym) {
+        return new LamaReadNode(sym.getText());
+    }
+
+    public RootCallTarget getCallTarget() {
+        var rootNode = new LamaRootNode(curScope);
+        return rootNode.getCallTarget();
+    }
 
 }

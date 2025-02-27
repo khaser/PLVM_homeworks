@@ -6,16 +6,16 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class LamaRootNode extends RootNode {
     @SuppressWarnings("FieldMayBeFinal")
     @Child
-    private LamaExprNode exprNode;
+    private LamaScopeNode root;
 
-    public LamaRootNode(LamaExprNode exprNode) {
+    public LamaRootNode(LamaScopeNode root) {
         super(null);
 
-        this.exprNode = exprNode;
+        this.root = root;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return this.exprNode.execInt(frame);
+        return this.root.execute(frame);
     }
 }
