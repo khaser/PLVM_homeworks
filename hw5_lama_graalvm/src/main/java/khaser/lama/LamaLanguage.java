@@ -3,6 +3,7 @@ package khaser.lama;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 
+import com.oracle.truffle.api.nodes.Node;
 import khaser.lama.nodes.builtins.LamaBuiltinWriteNode;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
 import khaser.lama.parser.LamaParser;
@@ -13,6 +14,12 @@ import khaser.lama.nodes.builtins.LamaBuiltinReadNode;
                               name = "Lama")
 public final class LamaLanguage extends TruffleLanguage<LamaContext> {
     public static final String ID = "lama";
+
+    private static final LanguageReference<LamaLanguage> REF = LanguageReference.create(LamaLanguage.class);
+
+    public static LamaLanguage get(Node node) {
+        return REF.get(node);
+    }
 
     public LamaLanguage() {
     }

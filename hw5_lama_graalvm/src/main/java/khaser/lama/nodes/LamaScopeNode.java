@@ -8,13 +8,15 @@ public class LamaScopeNode extends LamaNode {
 
     @Children
     private final LamaDefNode[] defs;
+    private final LamaFunDefNode[] funDefs;
 
     @Child
     private LamaExprNode expr;
 
-    public LamaScopeNode(LamaDefNode[] defs, LamaExprNode expr) {
+    public LamaScopeNode(LamaDefNode[] defs, LamaFunDefNode[] funDefs, LamaExprNode expr) {
         this.defs = defs;
         this.expr = expr;
+        this.funDefs = funDefs;
     }
 
     @Override
@@ -22,7 +24,15 @@ public class LamaScopeNode extends LamaNode {
         for (LamaDefNode def : this.defs) {
             def.execute(frame);
         }
-        return this.expr.execute(frame);
+        for (var funDef : this.funDefs) {
+            funDef.register();
+        }
+        var res = this.expr.execute(frame);
+        // TODO: restore shadowed variables
+        for (var funDef : this.funDefs) {
+            funDef.deregister();
+        }
+        return res;
     }
 
 }

@@ -4,11 +4,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 @NodeInfo(shortName = "const value")
-public final class LamaIntNode extends LamaExprNode {
+public final class LamaConstIntNode extends LamaExprNode {
 
     private final int val;
 
-    public LamaIntNode(int val) {
+    public LamaConstIntNode(int val) {
         this.val = val;
     }
 

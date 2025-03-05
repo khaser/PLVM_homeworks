@@ -6,6 +6,7 @@ import java.lang.Integer;
 
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
+import khaser.lama.nodes.funcs.LamaReadArgNode;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -17,11 +18,8 @@ import khaser.lama.nodes.cfg.*;
 public class LamaNodeFactory {
 
     private LamaScopeNode curScope;
-    private LamaExprNode curScopeExpr = new LamaSkipNode();
-    private ArrayList<LamaDefNode> curScopeDefs = new ArrayList();
 
-    private ArrayList<LamaExprNode> curCallArgs = new ArrayList();
-    private String curCallTarget;
+    private List<String> curFunArgNames;
 
     public LamaNodeFactory() {
     }
@@ -46,24 +44,23 @@ public class LamaNodeFactory {
     }
 
     public LamaExprNode createDecimal(Token literalToken) {
-        return new LamaIntNode(Integer.parseInt(literalToken.getText()));
+        return new LamaConstIntNode(Integer.parseInt(literalToken.getText()));
     }
 
-    public void addScopeDefs(List<LamaDefNode> defs) {
-        System.out.println("Scope defs added\n");
-        curScopeDefs.addAll(defs);
+    public void setFunArgs(List<String> args) {
+        curFunArgNames = args;
     }
 
-    public void setScopeExpr(LamaExprNode expr) {
-        System.out.println("Scope expr added\n");
-        curScopeExpr = expr;
+    public void unsetFunArgs() {
+        curFunArgNames = new ArrayList<>();
     }
 
-    public LamaScopeNode createScope() {
-        curScope = new LamaScopeNode(curScopeDefs.toArray(new LamaDefNode[0]), curScopeExpr);
-        curScopeDefs = new ArrayList();
-        curScopeExpr = new LamaSkipNode();
-        System.out.println("New scope created\n");
+    public LamaScopeNode createScope(List<LamaDefNode> scopeDefs,
+                                     List<LamaFunDefNode> scopeFunDefs,
+                                     LamaExprNode expr) {
+        curScope = new LamaScopeNode(scopeDefs.toArray(new LamaDefNode[0]),
+                                     scopeFunDefs.toArray(new LamaFunDefNode[0]),
+                                     expr);
         return curScope;
     }
 
@@ -72,27 +69,25 @@ public class LamaNodeFactory {
     }
 
     public LamaDefNode createDef(Token sym) {
-        return createDef(sym, new LamaIntNode(0));
+        return createDef(sym, new LamaConstIntNode(0));
     }
 
-    public LamaReadNode createRead(Token sym) {
-        return new LamaReadNode(sym.getText());
+    public LamaFunDefNode createFunDef(String funName, LamaScopeNode funBody) {
+        return new LamaFunDefNode(funName, funBody);
     }
 
-    public LamaCallNode createCall() {
-        LamaCallNode callNode = new LamaCallNode(new LamaFunctionDispatchNode(curCallTarget),
-                                                 curCallArgs.toArray(new LamaExprNode[0]));
-        curCallTarget = null;
-        curCallArgs = new ArrayList();
-        return callNode;
+    public LamaExprNode createRead(Token varNameToken) {
+        String varName = varNameToken.getText();
+        if (curFunArgNames.contains(varName)) {
+            return new LamaReadArgNode(curFunArgNames.indexOf(varName));
+        } else {
+            return new LamaReadNode(varName);
+        }
     }
 
-    public void setCallTarget(Token builtinToken) {
-        curCallTarget = builtinToken.getText();
-    }
-
-    public void addArgument(LamaExprNode expr) {
-        curCallArgs.add(expr);
+    public LamaCallNode createCall(String callTarget, List<LamaExprNode> args) {
+        return new LamaCallNode(new LamaFunctionDispatchNode(callTarget),
+                                args.toArray(new LamaExprNode[0]));
     }
 
     public RootCallTarget getCallTarget() {

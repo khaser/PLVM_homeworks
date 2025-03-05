@@ -1,0 +1,5 @@
+var y = read ();
+fun inc (x) {
+    x + 1
+}
+write (inc (inc (y)))

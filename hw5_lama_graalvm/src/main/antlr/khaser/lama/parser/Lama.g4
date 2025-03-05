@@ -36,13 +36,34 @@ public static RootCallTarget parseLama(Reader source) throws IOException {
 
 lama : scope_expr ;
 
-scope_expr returns [LamaScopeNode result] :
-    (var_defs { factory.addScopeDefs($var_defs.result); })*
+scope_expr returns [LamaScopeNode result, List<LamaDefNode> defs, List<LamaFunDefNode> funDefs] :
+    { $defs = new LinkedList(); $funDefs = new LinkedList(); }
+    (
+        var_defs { $defs.addAll($var_defs.result); }
+        | fun_def { $funDefs.add(factory.createFunDef($fun_def.funName, $fun_def.body)); }
+    )*
     // TODO: Replace with expr_seq
-    (expr { factory.setScopeExpr($expr.result); })
-    { $result = factory.createScope(); };
+    expr
+    { $result = factory.createScope($defs, $funDefs, $expr.result); }
+    ;
 
 // Definitions
+fun_def returns [String funName, List<String> args, LamaScopeNode body]:
+    'public'? 'fun'
+    LIDENT { $funName = $LIDENT.getText(); }
+    '('
+    { $args = new LinkedList(); }
+    (LIDENT { $args.add($LIDENT.getText()); }
+        (',' LIDENT { $args.add($LIDENT.getText()); })*
+    )?
+    ')'
+    { factory.setFunArgs($args); }
+    '{'
+    scope_expr { $body = $scope_expr.result; }
+    '}'
+    { factory.unsetFunArgs(); }
+    ;
+
 var_defs returns [List<LamaDefNode> result] :
     ('var'|'public') var_defs_seq { $result = $var_defs_seq.result; } ';';
 
@@ -74,15 +95,16 @@ expr_mult returns [LamaExprNode result] :
     )*
     ;
 
-expr_member returns [LamaExprNode result] :
-    expr_primary { $result = $expr_primary.result; }
-    | builtin=('read'|'write') { factory.setCallTarget($builtin); }
+expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> args] :
+    { $args = new LinkedList(); }
+    (LIDENT { $callTarget = $LIDENT.getText(); })
     '('
     // TODO: Replace with expr_seq
-    (expr { factory.addArgument($expr.result); })?
-    (',' expr { factory.addArgument($expr.result); })*
+    (expr { $args.add($expr.result); })?
+    (',' expr { $args.add($expr.result); })*
     ')'
-    { $result = factory.createCall(); }
+    { $result = factory.createCall($callTarget, $args); }
+    | expr_primary { $result = $expr_primary.result; }
     ;
 
 expr_primary returns [LamaExprNode result] :

@@ -36,8 +36,16 @@ public final class LamaContext {
         return this.globs.get(sym);
     }
 
+    // TODO: rename methods
+    public int globUnset(String sym) {
+        return this.globs.remove(sym);
+    }
     public void globFunSet(String sym, CallTarget value) {
         this.globFuns.put(sym, value);
+    }
+
+    public void globFunUnset(String sym) {
+        this.globFuns.remove(sym);
     }
 
     public CallTarget globFunGet(String sym) {
