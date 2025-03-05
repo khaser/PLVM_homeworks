@@ -1,33 +1,27 @@
 package khaser.lama;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.lang.Integer;
 
-import org.antlr.v4.runtime.Parser;
+import khaser.lama.nodes.funcs.LamaCallNode;
+import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
 import org.antlr.v4.runtime.Token;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.RootCallTarget;
 
 import khaser.lama.nodes.*;
 import khaser.lama.nodes.binops.*;
 import khaser.lama.nodes.cfg.*;
-import khaser.lama.LamaLanguage;
 
 public class LamaNodeFactory {
 
     private LamaScopeNode curScope;
     private LamaExprNode curScopeExpr = new LamaSkipNode();
     private ArrayList<LamaDefNode> curScopeDefs = new ArrayList();
+
+    private ArrayList<LamaExprNode> curCallArgs = new ArrayList();
+    private String curCallTarget;
 
     public LamaNodeFactory() {
     }
@@ -83,6 +77,22 @@ public class LamaNodeFactory {
 
     public LamaReadNode createRead(Token sym) {
         return new LamaReadNode(sym.getText());
+    }
+
+    public LamaCallNode createCall() {
+        LamaCallNode callNode = new LamaCallNode(new LamaFunctionDispatchNode(curCallTarget),
+                                                 curCallArgs.toArray(new LamaExprNode[0]));
+        curCallTarget = null;
+        curCallArgs = new ArrayList();
+        return callNode;
+    }
+
+    public void setCallTarget(Token builtinToken) {
+        curCallTarget = builtinToken.getText();
+    }
+
+    public void addArgument(LamaExprNode expr) {
+        curCallArgs.add(expr);
     }
 
     public RootCallTarget getCallTarget() {

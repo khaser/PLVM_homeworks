@@ -38,6 +38,7 @@ lama : scope_expr ;
 
 scope_expr returns [LamaScopeNode result] :
     (var_defs { factory.addScopeDefs($var_defs.result); })*
+    // TODO: Replace with expr_seq
     (expr { factory.setScopeExpr($expr.result); })
     { $result = factory.createScope(); };
 
@@ -74,6 +75,17 @@ expr_mult returns [LamaExprNode result] :
     ;
 
 expr_member returns [LamaExprNode result] :
+    expr_primary { $result = $expr_primary.result; }
+    | builtin=('read'|'write') { factory.setCallTarget($builtin); }
+    '('
+    // TODO: Replace with expr_seq
+    (expr { factory.addArgument($expr.result); })?
+    (',' expr { factory.addArgument($expr.result); })*
+    ')'
+    { $result = factory.createCall(); }
+    ;
+
+expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     ;
