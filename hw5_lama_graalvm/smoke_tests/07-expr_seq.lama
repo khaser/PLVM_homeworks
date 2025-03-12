@@ -1,0 +1,4 @@
+var x = read(), y, z;
+skip;
+skip;
+write (x)

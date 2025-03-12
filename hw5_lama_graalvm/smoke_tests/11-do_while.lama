@@ -1,0 +1,9 @@
+var x = 0;
+do
+    write (x)
+while x od;
+do
+    var y = -5;
+    x := x + 1;
+    write (x)
+while x + y od

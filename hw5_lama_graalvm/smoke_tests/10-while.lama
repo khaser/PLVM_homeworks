@@ -1,0 +1,5 @@
+var x = -5;
+while x do
+    x := x + 1;
+    write (x)
+od

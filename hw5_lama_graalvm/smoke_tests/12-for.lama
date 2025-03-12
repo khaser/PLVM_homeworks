@@ -1,0 +1,3 @@
+for var i; i := -5, i, i := i + 1 do
+    write (i)
+od

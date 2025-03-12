@@ -42,13 +42,12 @@ scope_expr returns [LamaScopeNode result, List<LamaDefNode> defs, List<LamaFunDe
         var_defs { $defs.addAll($var_defs.result); }
         | fun_def { $funDefs.add(factory.createFunDef($fun_def.funName, $fun_def.body)); }
     )*
-    // TODO: Replace with expr_seq
-    expr
-    { $result = factory.createScope($defs, $funDefs, $expr.result); }
+    expr_seq
+    { $result = factory.createScope($defs, $funDefs, $expr_seq.result); }
     ;
 
 // Definitions
-fun_def returns [String funName, List<String> args, LamaScopeNode body]:
+fun_def returns [String funName, List<String> args, LamaScopeNode body] :
     'public'? 'fun'
     LIDENT { $funName = $LIDENT.getText(); }
     '('
@@ -76,8 +75,21 @@ var_def_item returns [LamaDefNode result] :
     | (LIDENT '=' expr) { $result = factory.createDef($LIDENT, $expr.result); };
 
 // Expressions
-expr_seq : expr ';' expr_seq;
-expr returns [LamaExprNode result] : expr_add { $result = $expr_add.result; };
+expr_seq returns [LamaExprNode result]:
+    expr { $result = $expr.result; }
+    (';' expr_seq { $result = factory.createSeq($expr.result, $expr_seq.result); })?
+    ;
+
+expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result; };
+
+expr_assign returns [LamaExprNode result] :
+    LIDENT
+    (
+        ':='
+        expr_add { $result = new LamaAssignNode($LIDENT.getText(), $expr_add.result); }
+    )+
+    | expr_add { $result = $expr_add.result; }
+    ;
 
 expr_add returns [LamaExprNode result] :
     expr_mult { $result = $expr_mult.result; }
@@ -99,7 +111,6 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
     { $args = new LinkedList(); }
     (LIDENT { $callTarget = $LIDENT.getText(); })
     '('
-    // TODO: Replace with expr_seq
     (expr { $args.add($expr.result); })?
     (',' expr { $args.add($expr.result); })*
     ')'
@@ -110,6 +121,38 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
     | LIDENT { $result = factory.createRead($LIDENT); }
+    | 'skip' { $result = new LamaSkipNode(); }
+    | if_expr { $result = $if_expr.result; }
+    | while_expr { $result = $while_expr.result; }
+    | for_expr { $result = $for_expr.result; }
+    ;
+
+if_expr returns [LamaExprNode result] :
+    'if' expr_seq 'then' scope_expr
+    { $result = new LamaIfNode($expr_seq.result, $scope_expr.result); }
+    (else_part { $result = new LamaIfNode($expr_seq.result, $scope_expr.result, $else_part.result); })?
+    'fi'
+    ;
+
+else_part returns [LamaScopeNode result] :
+    'elif' expr_seq 'then' scope_expr
+    { $result = factory.wrapToScope(new LamaIfNode($expr_seq.result, $scope_expr.result)); }
+    (else_part { $result = factory.wrapToScope(new LamaIfNode($expr_seq.result, $scope_expr.result, $else_part.result)); })?
+    | 'else' scope_expr { $result = $scope_expr.result; }
+    ;
+
+while_expr returns [LamaExprNode result] :
+    'while' expr_seq 'do' scope_expr 'od'
+    { $result = new LamaWhileDoNode($expr_seq.result, $scope_expr.result); }
+    | 'do' scope_expr 'while' expr_seq 'od'
+    { $result = new LamaDoWhileNode($expr_seq.result, $scope_expr.result); }
+    ;
+
+for_expr returns [LamaExprNode result] :
+    'for' init=scope_expr ',' cond=expr_seq ',' iter=expr_seq 'do'
+    body=scope_expr
+    { $result = new LamaForNode($init.result, $cond.result, $iter.result, $body.result); }
+    'od'
     ;
 
 fragment LETTER : [A-Z] | [a-z] | '_';

@@ -2,6 +2,7 @@ package khaser.lama.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import khaser.lama.nodes.cfg.LamaSeqNode;
 
 @NodeInfo(shortName = "scope")
 public class LamaScopeNode extends LamaNode {
@@ -33,6 +34,10 @@ public class LamaScopeNode extends LamaNode {
             funDef.deregister();
         }
         return res;
+    }
+
+    public LamaScopeNode concat(LamaExprNode tail) {
+        return new LamaScopeNode(this.defs, this.funDefs, new LamaSeqNode(this.expr, tail));
     }
 
 }

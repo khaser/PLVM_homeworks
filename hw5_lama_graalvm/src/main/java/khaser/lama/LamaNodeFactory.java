@@ -72,13 +72,17 @@ public class LamaNodeFactory {
         return createDef(sym, new LamaConstIntNode(0));
     }
 
+    public LamaExprNode createSeq(LamaExprNode left, LamaExprNode right) {
+        return new LamaSeqNode(left, right);
+    }
+
     public LamaFunDefNode createFunDef(String funName, LamaScopeNode funBody) {
         return new LamaFunDefNode(funName, funBody);
     }
 
     public LamaExprNode createRead(Token varNameToken) {
         String varName = varNameToken.getText();
-        if (curFunArgNames.contains(varName)) {
+        if (curFunArgNames != null && curFunArgNames.contains(varName)) {
             return new LamaReadArgNode(curFunArgNames.indexOf(varName));
         } else {
             return new LamaReadNode(varName);
@@ -95,4 +99,7 @@ public class LamaNodeFactory {
         return rootNode.getCallTarget();
     }
 
+    public LamaScopeNode wrapToScope(LamaExprNode node) {
+        return new LamaScopeNode(new LamaDefNode[0], new LamaFunDefNode[0], node);
+    }
 }

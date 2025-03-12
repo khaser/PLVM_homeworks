@@ -1,0 +1,4 @@
+var x = 3, y = 0;
+if y + 1 then
+    write (x + 1)
+fi
