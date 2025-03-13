@@ -1,0 +1,39 @@
+plugins {
+    id 'application'
+    id 'org.graalvm.buildtools.native' version "0.10.5"
+}
+
+graalvmNative {
+    toolchainDetection.set(true)
+    binaries {
+        named('main') {
+            imageName.set('application')
+            // modules.add('khaser.lama')
+            debug.set(true)
+            verbose.set(true)
+            // fallback.set(true)
+            sharedLibrary.set(false)
+            // richOutput.set(false)
+            quickBuild.set(true)
+            useFatJar.set(false)
+            buildArgs.add("--initialize-at-build-time=khaser.lama.LamaLanguageProvider")
+            // resources.autodetect()
+        }
+    }
+}
+
+dependencies {
+    implementation "org.graalvm.truffle:truffle-api:$graal_version"
+    implementation project(':language')
+}
+
+application {
+    mainClass.set('khaser.lama.LamaMain')
+    applicationDefaultJvmArgs = [
+        '-Dgraalvm.locatorDisabled=true',
+    ]
+}
+
+run {
+    standardInput = System.in
+}
