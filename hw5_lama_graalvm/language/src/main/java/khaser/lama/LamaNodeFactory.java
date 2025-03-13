@@ -32,12 +32,14 @@ public class LamaNodeFactory {
         switch (opToken.getText()) {
             case "+":
                 return new LamaAddNode(leftNode, rightNode);
-            // case "-":
-            //     result = LamaSubNodeGen.create(leftUnboxed, rightUnboxed);
-            //     break;
-            // case "*":
-            //     result = LamaMulNodeGen.create(leftUnboxed, rightUnboxed);
-            //     break;
+            case "*":
+                return new LamaMulNode(leftNode, rightNode);
+             case "-":
+                 return new LamaSubNode(leftNode, rightNode);
+            case "/":
+                return new LamaDivNode(leftNode, rightNode);
+            case "%":
+                return new LamaModNode(leftNode, rightNode);
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
