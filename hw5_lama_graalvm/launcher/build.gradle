@@ -1,6 +1,7 @@
 plugins {
     id 'application'
     id 'org.graalvm.buildtools.native' version "0.10.5"
+    id 'com.github.johnrengelman.shadow' version "7.0.0"
 }
 
 graalvmNative {
@@ -8,16 +9,12 @@ graalvmNative {
     binaries {
         named('main') {
             imageName.set('application')
-            // modules.add('khaser.lama')
             debug.set(true)
             verbose.set(true)
-            // fallback.set(true)
             sharedLibrary.set(false)
-            // richOutput.set(false)
             quickBuild.set(true)
             useFatJar.set(false)
             buildArgs.add("--initialize-at-build-time=khaser.lama.LamaLanguageProvider")
-            // resources.autodetect()
         }
     }
 }

@@ -1,2 +1,0 @@
-var a = read (), b = read ();
-write (2 + a + b)

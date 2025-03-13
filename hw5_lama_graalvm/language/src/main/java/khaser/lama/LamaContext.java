@@ -6,13 +6,14 @@ import com.oracle.truffle.api.nodes.Node;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.Scanner;
 import java.util.HashMap;
 
 public final class LamaContext {
 
     private static final TruffleLanguage.ContextReference<LamaContext> REF =
           TruffleLanguage.ContextReference.create(LamaLanguage.class);
-    private final BufferedReader input;
+    private final Scanner inputScaner;
     public static LamaContext get(Node node) {
         return REF.get(node);
     }
@@ -22,12 +23,13 @@ public final class LamaContext {
 
 
     public LamaContext(TruffleLanguage.Env env) {
-        this.input = new BufferedReader(new InputStreamReader(env.in()));
+        this.inputScaner = new Scanner(new BufferedReader(new InputStreamReader(env.in())));
     }
 
-    public BufferedReader getInput() {
-        return input;
+    public Scanner getInputScaner() {
+        return this.inputScaner;
     }
+
     public void globSet(String sym, int value) {
         this.globs.put(sym, value);
     }

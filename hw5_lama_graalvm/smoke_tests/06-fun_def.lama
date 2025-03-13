@@ -1,5 +1,5 @@
-var y = read ();
+var y = 5;
 fun inc (x) {
     x + 1
 }
-write (inc (inc (y)))
+inc (inc (y))

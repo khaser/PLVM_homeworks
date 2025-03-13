@@ -1,4 +1,4 @@
-var x = read(), y, z;
+var x = 5, y, z;
 skip;
 skip;
-write (x)
+x

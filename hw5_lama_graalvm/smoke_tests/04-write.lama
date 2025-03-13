@@ -1,0 +1,2 @@
+var a = 4, b = 3;
+write (2 + a + b)
