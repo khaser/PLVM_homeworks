@@ -121,6 +121,7 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
     | LIDENT { $result = factory.createRead($LIDENT); }
+    | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
     | if_expr { $result = $if_expr.result; }
     | while_expr { $result = $while_expr.result; }
