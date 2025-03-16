@@ -40,6 +40,22 @@ public class LamaNodeFactory {
                 return new LamaDivNode(leftNode, rightNode);
             case "%":
                 return new LamaModNode(leftNode, rightNode);
+            case "==":
+                return new LamaEqNode(leftNode, rightNode);
+            case "!=":
+                return new LamaNeqNode(leftNode, rightNode);
+            case "<":
+                return new LamaLeNode(leftNode, rightNode);
+            case "<=":
+                return new LamaLeqNode(leftNode, rightNode);
+            case ">":
+                return new LamaLeNode(rightNode, leftNode);
+            case ">=":
+                return new LamaLeqNode(rightNode, leftNode);
+            case "&&":
+                return new LamaConjNode(leftNode, rightNode);
+            case "!!":
+                return new LamaDisjNode(leftNode, rightNode);
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }

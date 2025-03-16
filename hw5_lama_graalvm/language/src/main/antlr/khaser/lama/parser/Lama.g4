@@ -86,9 +86,33 @@ expr_assign returns [LamaExprNode result] :
     LIDENT
     (
         ':='
-        expr_add { $result = new LamaAssignNode($LIDENT.getText(), $expr_add.result); }
+        expr_disj { $result = new LamaAssignNode($LIDENT.getText(), $expr_disj.result); }
     )+
-    | expr_add { $result = $expr_add.result; }
+    | expr_disj { $result = $expr_disj.result; }
+    ;
+
+expr_disj returns [LamaExprNode result] :
+    expr_conj { $result = $expr_conj.result; }
+    (
+        op='!!'
+        expr_conj { $result = factory.createBinop($op, $result, $expr_conj.result); }
+    )*
+    ;
+
+expr_conj returns [LamaExprNode result] :
+    expr_comp { $result = $expr_comp.result; }
+    (
+        op='&&'
+        expr_comp { $result = factory.createBinop($op, $result, $expr_comp.result); }
+    )*
+    ;
+
+expr_comp returns [LamaExprNode result] :
+    expr_add { $result = $expr_add.result; }
+    (
+        op=('=='|'!='|'<'|'<='|'>'|'>=')
+        expr_add { $result = factory.createBinop($op, $result, $expr_add.result); }
+    )*
     ;
 
 expr_add returns [LamaExprNode result] :
@@ -163,4 +187,5 @@ DECIMAL : '-'? DIGIT+ ;
 LIDENT : [a-z] (LETTER | DIGIT)*;
 UIDENT : [A-Z] (LETTER | DIGIT)*;
 WS : ' ' -> skip;
+TAB : '\t' -> skip;
 NEWLINE : '\n' -> skip;

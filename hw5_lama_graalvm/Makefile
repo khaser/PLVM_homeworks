@@ -7,7 +7,7 @@ BINARY := ./launcher/build/native/nativeCompile/application
 FAT_JAR := ./launcher/build/libs/launcher-all.jar
 JAVA_CMD := java -cp $(FAT_JAR) khaser.lama.LamaMain
 
-SRCS := $(shell find ./language/src ./launcher/src -name '*.java' | sed 's@ @\\ @g')
+SRCS := $(shell find ./language/src ./launcher/src -name '*.java' -or -name '*.g4' | sed 's@ @\\ @g')
 
 # TODO: add ignored tests list
 
@@ -27,7 +27,7 @@ smoke_binary: $(BINARY)
 	echo Smoke tests passed
 
 regression_java: $(FAT_JAR)
-	$(foreach test, $(REG_TESTS), echo running $(test) && \
+	@$(foreach test, $(REG_TESTS), echo running $(test) && \
 					 diff <($(JAVA_CMD) $(test) < $(test:.lama=.input) | head --lines=-2) $(test:.lama=.log) &&) \
 	echo Regression tests passed
 
