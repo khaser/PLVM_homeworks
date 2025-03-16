@@ -14,6 +14,6 @@ public class LamaReadNode extends LamaExprNode {
 
     @Override
     public Integer execute(VirtualFrame frame) {
-        return getContext().globGet(sym);
+        return getContext().getVar(sym);
     }
 }

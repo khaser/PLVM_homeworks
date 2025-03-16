@@ -17,7 +17,7 @@ public class LamaAssignNode extends LamaExprNode {
     @Override
     public Integer execute(VirtualFrame frame) {
         Integer res = val.execute(frame);
-        getContext().globSet(sym, res);
+        getContext().setVar(sym, res);
         return res;
     }
 }

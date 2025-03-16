@@ -33,10 +33,12 @@ public final class LamaLanguage extends TruffleLanguage<LamaContext> {
     protected LamaContext createContext(Env env) {
         var ctx = new LamaContext(env);
 
+        // create global scope
+        ctx.pushScope();
         var readFunc = new LamaFunctionRootNode(this, new LamaBuiltinReadNode ());
-        ctx.globFunSet("read", readFunc.getCallTarget());
+        ctx.setFun("read", readFunc.getCallTarget());
         var writeFunc = new LamaFunctionRootNode(this, new LamaBuiltinWriteNode(new LamaReadArgNode(0)));
-        ctx.globFunSet("write", writeFunc.getCallTarget());
+        ctx.setFun("write", writeFunc.getCallTarget());
 
         return ctx;
     }

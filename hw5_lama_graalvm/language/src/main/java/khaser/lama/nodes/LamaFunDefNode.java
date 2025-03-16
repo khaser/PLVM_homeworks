@@ -26,10 +26,6 @@ public class LamaFunDefNode extends LamaNode {
 
     public void register() {
         var funRootNode = new LamaFunctionRootNode(currentTruffleLanguage(), this.body);
-        getContext().globFunSet(funName, funRootNode.getCallTarget());
-    }
-
-    public void deregister() {
-        getContext().globFunUnset(funName);
+        getContext().setFun(funName, funRootNode.getCallTarget());
     }
 }

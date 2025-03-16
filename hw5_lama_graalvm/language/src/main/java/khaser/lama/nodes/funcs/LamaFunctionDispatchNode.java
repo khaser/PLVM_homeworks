@@ -14,6 +14,6 @@ public final class LamaFunctionDispatchNode extends Node {
     }
 
     public CallTarget execute(VirtualFrame frame) {
-        return LamaContext.get(this).globFunGet(this.sym);
+        return LamaContext.get(this).getFun(this.sym);
     }
 }

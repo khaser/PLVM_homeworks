@@ -22,6 +22,7 @@ public class LamaScopeNode extends LamaNode {
 
     @Override
     public Integer execute(VirtualFrame frame) {
+        getContext().pushScope();
         for (LamaDefNode def : this.defs) {
             def.execute(frame);
         }
@@ -29,10 +30,7 @@ public class LamaScopeNode extends LamaNode {
             funDef.register();
         }
         var res = this.expr.execute(frame);
-        // TODO: restore shadowed variables
-        for (var funDef : this.funDefs) {
-            funDef.deregister();
-        }
+        getContext().popScope();
         return res;
     }
 

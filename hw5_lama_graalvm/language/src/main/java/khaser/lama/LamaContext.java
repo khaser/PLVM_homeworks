@@ -6,6 +6,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.LinkedList;
 import java.util.Scanner;
 import java.util.HashMap;
 
@@ -18,8 +19,8 @@ public final class LamaContext {
         return REF.get(node);
     }
 
-    private final HashMap<String, Integer> globs = new HashMap<>();
-    private final HashMap<String, CallTarget> globFuns = new HashMap<>();
+    private final LinkedList<HashMap<String, Integer>> varScopes = new LinkedList<>();
+    private final LinkedList<HashMap<String, CallTarget>> funcScopes = new LinkedList<>();
 
 
     public LamaContext(TruffleLanguage.Env env) {
@@ -30,28 +31,39 @@ public final class LamaContext {
         return this.inputScaner;
     }
 
-    public void globSet(String sym, int value) {
-        this.globs.put(sym, value);
+    public void pushScope() {
+        varScopes.push(new HashMap<>());
+        funcScopes.push(new HashMap<>());
     }
 
-    public int globGet(String sym) {
-        return this.globs.get(sym);
+    public void popScope() {
+        varScopes.pop();
+        funcScopes.pop();
     }
 
-    // TODO: rename methods
-    public int globUnset(String sym) {
-        return this.globs.remove(sym);
-    }
-    public void globFunSet(String sym, CallTarget value) {
-        this.globFuns.put(sym, value);
+    private HashMap<String, Integer> findVarScope(String sym) {
+        return varScopes.stream().filter(scope -> scope.containsKey(sym)).findFirst().orElseThrow();
     }
 
-    public void globFunUnset(String sym) {
-        this.globFuns.remove(sym);
+    private HashMap<String, CallTarget> findFuncScope(String sym) {
+        return funcScopes.stream().filter(scope -> scope.containsKey(sym)).findFirst().orElseThrow();
     }
 
-    public CallTarget globFunGet(String sym) {
-        return this.globFuns.get(sym);
+    public void setVar(String sym, int value) {
+        varScopes.getLast().put(sym, value);
     }
 
+    public int getVar(String sym) {
+        var scope = this.findVarScope(sym);
+        return scope.get(sym);
+    }
+
+    public CallTarget getFun(String sym) {
+        var scope = this.findFuncScope(sym);
+        return scope.get(sym);
+    }
+
+    public void setFun(String sym, CallTarget func) {
+        funcScopes.getLast().put(sym, func);
+    }
 }
