@@ -140,6 +140,7 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
     ')'
     { $result = factory.createCall($callTarget, $args); }
     | expr_primary { $result = $expr_primary.result; }
+    | '-' expr_primary { $result = new LamaNegNode($expr_primary.result); }
     ;
 
 expr_primary returns [LamaExprNode result] :
@@ -182,7 +183,7 @@ for_expr returns [LamaExprNode result] :
 
 fragment LETTER : [A-Z] | [a-z] | '_';
 fragment DIGIT : [0-9];
-DECIMAL : '-'? DIGIT+ ;
+DECIMAL : DIGIT+ ;
 
 LIDENT : [a-z] (LETTER | DIGIT)*;
 UIDENT : [A-Z] (LETTER | DIGIT)*;
