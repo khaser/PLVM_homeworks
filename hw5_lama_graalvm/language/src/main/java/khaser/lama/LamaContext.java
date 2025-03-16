@@ -6,9 +6,9 @@ import com.oracle.truffle.api.nodes.Node;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.util.LinkedList;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.Stack;
 
 public final class LamaContext {
 
@@ -19,8 +19,8 @@ public final class LamaContext {
         return REF.get(node);
     }
 
-    private final LinkedList<HashMap<String, Integer>> varScopes = new LinkedList<>();
-    private final LinkedList<HashMap<String, CallTarget>> funcScopes = new LinkedList<>();
+    private final Stack<HashMap<String, Integer>> varScopes = new Stack<>();
+    private final Stack<HashMap<String, CallTarget>> funcScopes = new Stack<>();
 
 
     public LamaContext(TruffleLanguage.Env env) {
@@ -42,15 +42,16 @@ public final class LamaContext {
     }
 
     private HashMap<String, Integer> findVarScope(String sym) {
-        return varScopes.stream().filter(scope -> scope.containsKey(sym)).findFirst().orElseThrow();
+        return varScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
     private HashMap<String, CallTarget> findFuncScope(String sym) {
-        return funcScopes.stream().filter(scope -> scope.containsKey(sym)).findFirst().orElseThrow();
+        return funcScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
     public void setVar(String sym, int value) {
-        varScopes.getLast().put(sym, value);
+        var scope = this.findVarScope(sym);
+        scope.put(sym, value);
     }
 
     public int getVar(String sym) {
@@ -58,12 +59,16 @@ public final class LamaContext {
         return scope.get(sym);
     }
 
+    public void defVar(String sym, int value) {
+        varScopes.peek().put(sym, value);
+    }
+
     public CallTarget getFun(String sym) {
         var scope = this.findFuncScope(sym);
         return scope.get(sym);
     }
 
-    public void setFun(String sym, CallTarget func) {
-        funcScopes.getLast().put(sym, func);
+    public void defFun(String sym, CallTarget func) {
+        funcScopes.peek().put(sym, func);
     }
 }

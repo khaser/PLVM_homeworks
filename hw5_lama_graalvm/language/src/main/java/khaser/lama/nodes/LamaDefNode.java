@@ -23,7 +23,7 @@ public class LamaDefNode extends LamaNode {
     @Override
     public Integer execute(VirtualFrame frame) {
         Integer exprVal = this.expr.execute(frame);
-        getContext().setVar(sym, exprVal);
+        getContext().defVar(sym, exprVal);
         return exprVal;
     }
 }
