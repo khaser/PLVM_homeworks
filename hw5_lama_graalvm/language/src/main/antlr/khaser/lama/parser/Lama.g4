@@ -131,7 +131,16 @@ expr_mult returns [LamaExprNode result] :
     )*
     ;
 
-expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> args] :
+expr_member returns [LamaExprNode result] :
+    expr_fun_call { $result = $expr_fun_call.result; }
+    | lit=LIDENT '[' expr ']'
+      { $result = LamaArrReadNodeGen.create(new LamaReadNode($lit.getText()), $expr.result); }
+    | expr_primary { $result = $expr_primary.result; }
+    | '-' expr_primary { $result = LamaNegNodeGen.create($expr_primary.result); }
+    ;
+
+expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode> args] :
+    // classical form
     { $args = new LinkedList(); }
     (LIDENT { $callTarget = $LIDENT.getText(); })
     '('
@@ -139,10 +148,17 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
     (',' expr { $args.add($expr.result); })*
     ')'
     { $result = factory.createCall($callTarget, $args); }
-    | lit=LIDENT '[' expr ']'
-      { $result = LamaArrReadNodeGen.create(new LamaReadNode($lit.getText()), $expr.result); }
-    | expr_primary { $result = $expr_primary.result; }
-    | '-' expr_primary { $result = LamaNegNodeGen.create($expr_primary.result); }
+    |
+    // dot notation form
+    expr_primary '.' LIDENT
+    { $args = Arrays.asList($expr_primary.result); $callTarget = $LIDENT.getText(); }
+    (
+        '('
+        (expr { $args.add($expr.result); })?
+        (',' expr { $args.add($expr.result); })*
+        ')'
+    )?
+    { $result = factory.createCall($callTarget, $args); }
     ;
 
 expr_primary returns [LamaExprNode result] :
