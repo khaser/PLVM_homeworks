@@ -7,6 +7,7 @@ import java.lang.Integer;
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
+import khaser.lama.nodes.structs.LamaArrCreateNode;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -24,6 +25,7 @@ public class LamaNodeFactory {
     public LamaNodeFactory() {
     }
 
+
     public LamaExprNode createBinop(Token opToken, LamaExprNode leftNode, LamaExprNode rightNode) {
         if (leftNode == null || rightNode == null) {
             return null;
@@ -31,31 +33,31 @@ public class LamaNodeFactory {
 
         switch (opToken.getText()) {
             case "+":
-                return new LamaAddNode(leftNode, rightNode);
+                return LamaAddNodeGen.create(leftNode, rightNode);
             case "*":
-                return new LamaMulNode(leftNode, rightNode);
+                return LamaMulNodeGen.create(leftNode, rightNode);
              case "-":
-                 return new LamaSubNode(leftNode, rightNode);
+                 return LamaSubNodeGen.create(leftNode, rightNode);
             case "/":
-                return new LamaDivNode(leftNode, rightNode);
+                return LamaDivNodeGen.create(leftNode, rightNode);
             case "%":
-                return new LamaModNode(leftNode, rightNode);
+                return LamaModNodeGen.create(leftNode, rightNode);
             case "==":
-                return new LamaEqNode(leftNode, rightNode);
+                return LamaEqNodeGen.create(leftNode, rightNode);
             case "!=":
-                return new LamaNeqNode(leftNode, rightNode);
+                return LamaLnotNodeGen.create(LamaEqNodeGen.create(leftNode, rightNode));
             case "<":
-                return new LamaLeNode(leftNode, rightNode);
+                return LamaLeNodeGen.create(leftNode, rightNode);
             case "<=":
-                return new LamaLeqNode(leftNode, rightNode);
+                return LamaLeqNodeGen.create(leftNode, rightNode);
             case ">":
-                return new LamaLeNode(rightNode, leftNode);
+                return LamaLeNodeGen.create(rightNode, leftNode);
             case ">=":
-                return new LamaLeqNode(rightNode, leftNode);
+                return LamaLeqNodeGen.create(rightNode, leftNode);
             case "&&":
-                return new LamaConjNode(leftNode, rightNode);
+                return LamaLandNodeGen.create(leftNode, rightNode);
             case "!!":
-                return new LamaDisjNode(leftNode, rightNode);
+                return LamaLorNodeGen.create(leftNode, rightNode);
             default:
                 throw new RuntimeException("unexpected operation: " + opToken.getText());
         }
@@ -120,4 +122,21 @@ public class LamaNodeFactory {
     public LamaScopeNode wrapToScope(LamaExprNode node) {
         return new LamaScopeNode(new LamaDefNode[0], new LamaFunDefNode[0], node);
     }
+
+    public LamaExprNode createArrayObject(List<LamaExprNode> els) {
+        return new LamaArrCreateNode(els.toArray(new LamaExprNode[0]));
+    }
+
+    public LamaExprNode createIf(LamaExprNode pred, LamaScopeNode thenScope, LamaScopeNode elseScope) {
+        return new LamaIfNode(pred, thenScope, elseScope);
+    }
+
+    public LamaExprNode createIf(LamaExprNode pred, LamaScopeNode thenScope) {
+        var skipScope = new LamaScopeNode(new LamaDefNode[0], new LamaFunDefNode[0], new LamaSkipNode());
+        return new LamaIfNode(pred, thenScope, skipScope);
+    }
+
+//    public createArr() {
+//        LamaArrReadGe
+//    }
 }

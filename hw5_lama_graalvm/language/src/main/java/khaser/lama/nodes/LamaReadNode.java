@@ -13,7 +13,7 @@ public class LamaReadNode extends LamaExprNode {
     }
 
     @Override
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return getContext().getVar(sym);
     }
 }

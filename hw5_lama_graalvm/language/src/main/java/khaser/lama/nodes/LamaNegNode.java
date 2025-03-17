@@ -1,18 +1,14 @@
 package khaser.lama.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
 @NodeInfo(shortName = "neg")
-public class LamaNegNode extends LamaExprNode {
-    @Child
-    private LamaExprNode expr;
-    public LamaNegNode(LamaExprNode expr) {
-        this.expr = expr;
+@NodeChild("expr")
+public abstract class LamaNegNode extends LamaExprNode {
+    @Specialization
+    public Integer execInt(int expr) {
+        return -expr;
     }
-
-    public Integer execute(VirtualFrame frame) {
-        return -this.expr.execute(frame);
-    }
-
 }

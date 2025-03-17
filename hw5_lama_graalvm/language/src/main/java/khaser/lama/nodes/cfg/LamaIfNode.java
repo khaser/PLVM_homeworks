@@ -31,8 +31,9 @@ public class LamaIfNode extends LamaExprNode {
         this.elseScope = elseScope;
     }
 
-    public Integer execute(VirtualFrame frame) {
-        if (this.predicate.execute(frame) != 0) {
+    public Object execute(VirtualFrame frame) {
+        Integer predVal = (Integer) this.predicate.execute(frame);
+        if (predVal != 0) {
             return this.thenScope.execute(frame);
         } else {
             return this.elseScope.execute(frame);

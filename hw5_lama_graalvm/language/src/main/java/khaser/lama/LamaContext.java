@@ -14,21 +14,21 @@ public final class LamaContext {
 
     private static final TruffleLanguage.ContextReference<LamaContext> REF =
           TruffleLanguage.ContextReference.create(LamaLanguage.class);
-    private final Scanner inputScaner;
+    private final Scanner inputScanner;
     public static LamaContext get(Node node) {
         return REF.get(node);
     }
 
-    private final Stack<HashMap<String, Integer>> varScopes = new Stack<>();
+    private final Stack<HashMap<String, Object>> varScopes = new Stack<>();
     private final Stack<HashMap<String, CallTarget>> funcScopes = new Stack<>();
 
 
     public LamaContext(TruffleLanguage.Env env) {
-        this.inputScaner = new Scanner(new BufferedReader(new InputStreamReader(env.in())));
+        this.inputScanner = new Scanner(new BufferedReader(new InputStreamReader(env.in())));
     }
 
-    public Scanner getInputScaner() {
-        return this.inputScaner;
+    public Scanner getInputScanner() {
+        return this.inputScanner;
     }
 
     public void pushScope() {
@@ -41,7 +41,7 @@ public final class LamaContext {
         funcScopes.pop();
     }
 
-    private HashMap<String, Integer> findVarScope(String sym) {
+    private HashMap<String, Object> findVarScope(String sym) {
         return varScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
@@ -49,17 +49,17 @@ public final class LamaContext {
         return funcScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
-    public void setVar(String sym, int value) {
+    public void setVar(String sym, Object value) {
         var scope = this.findVarScope(sym);
         scope.put(sym, value);
     }
 
-    public int getVar(String sym) {
+    public Object getVar(String sym) {
         var scope = this.findVarScope(sym);
         return scope.get(sym);
     }
 
-    public void defVar(String sym, int value) {
+    public void defVar(String sym, Object value) {
         varScopes.peek().put(sym, value);
     }
 

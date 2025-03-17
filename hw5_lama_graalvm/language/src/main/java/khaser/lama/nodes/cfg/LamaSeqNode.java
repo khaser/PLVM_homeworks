@@ -20,7 +20,7 @@ public class LamaSeqNode extends LamaExprNode {
     }
 
 
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         this.leftExpr.execute(frame);
         return this.rightExpr.execute(frame);
     }

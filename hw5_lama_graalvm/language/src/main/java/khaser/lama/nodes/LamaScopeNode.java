@@ -21,7 +21,7 @@ public class LamaScopeNode extends LamaNode {
     }
 
     @Override
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         getContext().pushScope();
         for (LamaDefNode def : this.defs) {
             def.execute(frame);

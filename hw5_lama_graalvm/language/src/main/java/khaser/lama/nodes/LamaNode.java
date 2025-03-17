@@ -16,5 +16,5 @@ public abstract class LamaNode extends Node {
     protected final LamaLanguage currentTruffleLanguage() {
         return LamaLanguage.get(this);
     }
-    public abstract Integer execute(VirtualFrame frame);
+    public abstract Object execute(VirtualFrame frame);
 }

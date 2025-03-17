@@ -13,6 +13,7 @@ import khaser.lama.LamaNodeFactory;
 import khaser.lama.nodes.*;
 import khaser.lama.nodes.binops.*;
 import khaser.lama.nodes.cfg.*;
+import khaser.lama.nodes.structs.*;
 
 import java.io.Reader;
 import java.util.Arrays;
@@ -139,8 +140,10 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
     (',' expr { $args.add($expr.result); })*
     ')'
     { $result = factory.createCall($callTarget, $args); }
+    | lit=LIDENT '[' expr ']'
+      { $result = LamaArrReadNodeGen.create(new LamaReadNode($lit.getText()), $expr.result); }
     | expr_primary { $result = $expr_primary.result; }
-    | '-' expr_primary { $result = new LamaNegNode($expr_primary.result); }
+    | '-' expr_primary { $result = LamaNegNodeGen.create($expr_primary.result); }
     ;
 
 expr_primary returns [LamaExprNode result] :
@@ -151,19 +154,29 @@ expr_primary returns [LamaExprNode result] :
     | if_expr { $result = $if_expr.result; }
     | while_expr { $result = $while_expr.result; }
     | for_expr { $result = $for_expr.result; }
+    | array_expr { $result = $array_expr.result; }
+    ;
+
+array_expr returns [LamaExprNode result, List<LamaExprNode> els] :
+    { $els = new LinkedList(); }
+    '['
+    (expr { $els.add($expr.result); })?
+    (',' expr { $els.add($expr.result); })*
+    ']'
+    { $result = factory.createArrayObject($els); }
     ;
 
 if_expr returns [LamaExprNode result] :
     'if' expr_seq 'then' scope_expr
-    { $result = new LamaIfNode($expr_seq.result, $scope_expr.result); }
-    (else_part { $result = new LamaIfNode($expr_seq.result, $scope_expr.result, $else_part.result); })?
+    { $result = factory.createIf($expr_seq.result, $scope_expr.result); }
+    (else_part { $result = factory.createIf($expr_seq.result, $scope_expr.result, $else_part.result); })?
     'fi'
     ;
 
 else_part returns [LamaScopeNode result] :
     'elif' expr_seq 'then' scope_expr
-    { $result = factory.wrapToScope(new LamaIfNode($expr_seq.result, $scope_expr.result)); }
-    (else_part { $result = factory.wrapToScope(new LamaIfNode($expr_seq.result, $scope_expr.result, $else_part.result)); })?
+    { $result = factory.wrapToScope(factory.createIf($expr_seq.result, $scope_expr.result)); }
+    (else_part { $result = factory.wrapToScope(factory.createIf($expr_seq.result, $scope_expr.result, $else_part.result)); })?
     | 'else' scope_expr { $result = $scope_expr.result; }
     ;
 

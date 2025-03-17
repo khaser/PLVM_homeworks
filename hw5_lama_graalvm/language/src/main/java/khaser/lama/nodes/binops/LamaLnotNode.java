@@ -5,13 +5,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import khaser.lama.nodes.LamaExprNode;
 
-@NodeInfo(shortName = "mod")
-@NodeChild("left")
-@NodeChild("right")
-public abstract class LamaModNode extends LamaExprNode {
+@NodeInfo(shortName = "lnot")
+@NodeChild("expr")
+public abstract class LamaLnotNode extends LamaExprNode {
     @Specialization
-    public Integer execInt(int left, int right) {
-        return left % right;
+    public Integer execInt(int expr) {
+        return expr != 0 ? 0 : 1;
     }
 
 }

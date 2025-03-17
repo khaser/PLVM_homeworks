@@ -18,7 +18,7 @@ public final class LamaFunctionRootNode extends RootNode {
     }
 
     @Override
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return this.entry.execute(frame);
     }
 }

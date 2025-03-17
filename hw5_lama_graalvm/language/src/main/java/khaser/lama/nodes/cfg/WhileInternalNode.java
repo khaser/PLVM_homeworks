@@ -19,7 +19,8 @@ final class WhileInternalNode extends Node implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        if (this.predicate.execute(frame) == 0) {
+        Integer predVal = (Integer) this.predicate.execute(frame);
+        if (predVal == 0) {
             return false;
         }
         this.body.execute(frame);

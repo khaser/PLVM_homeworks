@@ -14,7 +14,7 @@ public class LamaBuiltinReadNode extends LamaNode {
     @Override
     public Integer execute(VirtualFrame frame) {
         System.out.print("> ");
-        return getContext().getInputScaner().nextInt();
+        return getContext().getInputScanner().nextInt();
     }
 
 }

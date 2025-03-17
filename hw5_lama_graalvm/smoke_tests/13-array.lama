@@ -1,0 +1,5 @@
+var arr = [1, 2, 5, 3, 4];
+
+for var i; i := 0, i + -5, i := i + 1 do
+    write(arr[i])
+od

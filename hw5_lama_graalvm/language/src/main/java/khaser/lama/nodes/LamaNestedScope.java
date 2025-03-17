@@ -13,7 +13,7 @@ public class LamaNestedScope extends LamaExprNode {
     }
 
     @Override
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return this.scope.execute(frame);
     }
 }
