@@ -31,36 +31,22 @@ public class LamaNodeFactory {
             return null;
         }
 
-        switch (opToken.getText()) {
-            case "+":
-                return LamaAddNodeGen.create(leftNode, rightNode);
-            case "*":
-                return LamaMulNodeGen.create(leftNode, rightNode);
-             case "-":
-                 return LamaSubNodeGen.create(leftNode, rightNode);
-            case "/":
-                return LamaDivNodeGen.create(leftNode, rightNode);
-            case "%":
-                return LamaModNodeGen.create(leftNode, rightNode);
-            case "==":
-                return LamaEqNodeGen.create(leftNode, rightNode);
-            case "!=":
-                return LamaLnotNodeGen.create(LamaEqNodeGen.create(leftNode, rightNode));
-            case "<":
-                return LamaLeNodeGen.create(leftNode, rightNode);
-            case "<=":
-                return LamaLeqNodeGen.create(leftNode, rightNode);
-            case ">":
-                return LamaLeNodeGen.create(rightNode, leftNode);
-            case ">=":
-                return LamaLeqNodeGen.create(rightNode, leftNode);
-            case "&&":
-                return LamaLandNodeGen.create(leftNode, rightNode);
-            case "!!":
-                return LamaLorNodeGen.create(leftNode, rightNode);
-            default:
-                throw new RuntimeException("unexpected operation: " + opToken.getText());
-        }
+        return switch (opToken.getText()) {
+            case "+" -> LamaAddNodeGen.create(leftNode, rightNode);
+            case "*" -> LamaMulNodeGen.create(leftNode, rightNode);
+            case "-" -> LamaSubNodeGen.create(leftNode, rightNode);
+            case "/" -> LamaDivNodeGen.create(leftNode, rightNode);
+            case "%" -> LamaModNodeGen.create(leftNode, rightNode);
+            case "==" -> LamaEqNodeGen.create(leftNode, rightNode);
+            case "!=" -> LamaLnotNodeGen.create(LamaEqNodeGen.create(leftNode, rightNode));
+            case "<" -> LamaLeNodeGen.create(leftNode, rightNode);
+            case "<=" -> LamaLeqNodeGen.create(leftNode, rightNode);
+            case ">" -> LamaLeNodeGen.create(rightNode, leftNode);
+            case ">=" -> LamaLeqNodeGen.create(rightNode, leftNode);
+            case "&&" -> LamaLandNodeGen.create(leftNode, rightNode);
+            case "!!" -> LamaLorNodeGen.create(leftNode, rightNode);
+            default -> throw new RuntimeException("unexpected operation: " + opToken.getText());
+        };
     }
 
     public LamaExprNode createDecimal(Token literalToken) {
@@ -136,7 +122,4 @@ public class LamaNodeFactory {
         return new LamaIfNode(pred, thenScope, skipScope);
     }
 
-//    public createArr() {
-//        LamaArrReadGe
-//    }
 }

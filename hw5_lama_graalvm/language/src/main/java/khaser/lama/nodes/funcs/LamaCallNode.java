@@ -23,7 +23,7 @@ public final class LamaCallNode extends LamaExprNode {
     public Integer execute(VirtualFrame frame) {
         CallTarget callTarget = this.target.execute(frame);
 
-        Object[] argVals = new Integer[this.callArgs.length];
+        Object[] argVals = new Object[this.callArgs.length];
         for (int i = 0; i < this.callArgs.length; i++) {
             argVals[i] = this.callArgs[i].execute(frame);
         }

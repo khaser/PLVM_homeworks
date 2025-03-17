@@ -4,11 +4,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 
 import com.oracle.truffle.api.nodes.Node;
-import khaser.lama.nodes.builtins.LamaBuiltinWriteNode;
+import khaser.lama.nodes.builtins.*;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
 import khaser.lama.parser.LamaParser;
 import khaser.lama.nodes.funcs.LamaFunctionRootNode;
-import khaser.lama.nodes.builtins.LamaBuiltinReadNode;
 
 @TruffleLanguage.Registration(id = LamaLanguage.ID,
                               name = "Lama")
@@ -39,6 +38,8 @@ public final class LamaLanguage extends TruffleLanguage<LamaContext> {
         ctx.defFun("read", readFunc.getCallTarget());
         var writeFunc = new LamaFunctionRootNode(this, new LamaBuiltinWriteNode(new LamaReadArgNode(0)));
         ctx.defFun("write", writeFunc.getCallTarget());
+        var lengthFunc = new LamaFunctionRootNode(this, LamaBuiltinLengthNodeGen.create(new LamaReadArgNode(0)));
+        ctx.defFun("length", lengthFunc.getCallTarget());
 
         return ctx;
     }

@@ -1,0 +1,8 @@
+var s = "abaaaba";
+
+s[3] := 99;
+write (length (s));
+
+for var i; i := 0, i < 7, i := i + 1 do
+    write (s[i])
+od

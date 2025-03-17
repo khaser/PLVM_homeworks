@@ -35,7 +35,7 @@ public static RootCallTarget parseLama(Reader source) throws IOException {
 }
 }
 
-lama : scope_expr ;
+lama : scope_expr EOF;
 
 scope_expr returns [LamaScopeNode result, List<LamaDefNode> defs, List<LamaFunDefNode> funDefs] :
     { $defs = new LinkedList(); $funDefs = new LinkedList(); }
@@ -83,12 +83,11 @@ expr_seq returns [LamaExprNode result]:
 
 expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result; };
 
+// TODO: true REF/WEAK semantics
 expr_assign returns [LamaExprNode result] :
-    LIDENT
-    (
-        ':='
-        expr_disj { $result = new LamaAssignNode($LIDENT.getText(), $expr_disj.result); }
-    )+
+    LIDENT ':=' val=expr_disj { $result = new LamaAssignNode($LIDENT.getText(), $val.result); }
+    | LIDENT '[' idx=expr ']' ':=' val=expr_disj
+      { $result = LamaArrAssignNodeGen.create($LIDENT.getText(), $idx.result, $val.result); }
     | expr_disj { $result = $expr_disj.result; }
     ;
 
@@ -148,6 +147,7 @@ expr_member returns [LamaExprNode result, String callTarget, List<LamaExprNode> 
 
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
+    | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
@@ -200,6 +200,8 @@ DECIMAL : DIGIT+ ;
 
 LIDENT : [a-z] (LETTER | DIGIT)*;
 UIDENT : [A-Z] (LETTER | DIGIT)*;
+STRING : '"' (~('"'))* '"';
+
 WS : ' ' -> skip;
 TAB : '\t' -> skip;
 NEWLINE : '\n' -> skip;

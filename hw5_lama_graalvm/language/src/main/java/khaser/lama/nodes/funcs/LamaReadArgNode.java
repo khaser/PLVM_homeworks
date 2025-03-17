@@ -13,8 +13,8 @@ public class LamaReadArgNode extends LamaExprNode {
     }
 
     @Override
-    public Integer execute(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
-        return (Integer) arguments[this.idx];
+        return arguments[this.idx];
     }
 }
