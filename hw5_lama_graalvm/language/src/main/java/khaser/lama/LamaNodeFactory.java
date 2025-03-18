@@ -3,6 +3,7 @@ package khaser.lama;
 import java.util.ArrayList;
 import java.util.List;
 import java.lang.Integer;
+import java.util.Objects;
 
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
@@ -52,6 +53,17 @@ public class LamaNodeFactory {
 
     public LamaExprNode createDecimal(Token literalToken) {
         return new LamaConstIntNode(Integer.parseInt(literalToken.getText()));
+    }
+
+    public LamaExprNode createChar(Token literalToken) {
+        String token = literalToken.getText().replaceAll("\'", "");
+        if (Objects.equals(token, "\\n")) {
+            return new LamaConstIntNode('\n');
+        } else if (Objects.equals(token, "\\t")) {
+            return new LamaConstIntNode('\t');
+        } else {
+            return new LamaConstIntNode(token.charAt(0));
+        }
     }
 
     public void setFunArgs(List<String> args) {

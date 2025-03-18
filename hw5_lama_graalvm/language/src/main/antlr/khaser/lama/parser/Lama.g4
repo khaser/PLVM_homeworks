@@ -162,6 +162,7 @@ expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
     | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
+    | CHAR { $result = factory.createChar($CHAR); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
@@ -228,6 +229,7 @@ DECIMAL : DIGIT+ ;
 LIDENT : [a-z] (LETTER | DIGIT)*;
 UIDENT : [A-Z] (LETTER | DIGIT)*;
 STRING : '"' (~('"'))* '"';
+CHAR : '\'' (~('\'')|'\\n'|'\\t') '\'';
 
 WS : ' ' -> skip;
 TAB : '\t' -> skip;
