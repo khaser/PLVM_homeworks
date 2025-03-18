@@ -85,7 +85,7 @@ expr_seq returns [LamaExprNode result]:
 expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result; };
 
 expr_assign returns [LamaExprNode result] :
-    dest=expr_ref ':=' val=expr_disj { $result = LamaAssignNodeGen.create($dest.result, $val.result); }
+    dest=expr_ref ':=' val=expr_assign { $result = LamaAssignNodeGen.create($dest.result, $val.result); }
     | expr_disj { $result = $expr_disj.result; }
     ;
 
