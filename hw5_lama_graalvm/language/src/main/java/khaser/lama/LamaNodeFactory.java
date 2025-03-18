@@ -8,7 +8,6 @@ import java.util.Objects;
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
-import khaser.lama.nodes.refs.LamaRefVarNode;
 import khaser.lama.nodes.structs.LamaArrCreateNode;
 import org.antlr.v4.runtime.Token;
 

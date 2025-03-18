@@ -178,6 +178,8 @@ expr_ref returns [LamaRefNode result] :
     | expr_weak { $result = $expr_weak.result; }
     | 'if' pred=expr_seq 'then' thenRef=expr_ref 'else' elseRef=expr_ref 'fi'
       { $result = LamaRefIfNodeGen.create($pred.result, $thenRef.result, $elseRef.result); }
+    | '(' left=expr ';' right=expr_ref ')'
+      { $result = new LamaRefSeqNode($left.result, $right.result); }
     ;
 
 expr_weak returns [LamaWeakNode result] :
