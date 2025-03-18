@@ -178,10 +178,10 @@ expr_ref returns [LamaRefNode result] :
     LIDENT { $result = new LamaRefVarNode($LIDENT.getText()); }
     | dest=expr_weak '[' idx=expr ']'
       { $result = LamaWeakArrNodeGen.create($dest.result, $idx.result); }
+    | 'if' pred=expr_seq 'then' thenRef=expr_ref 'else' elseRef=expr_ref 'fi'
+      { $result = LamaRefIfNodeGen.create($pred.result, $thenRef.result, $elseRef.result); }
     ;
 
-    // | 'if' pred=expr_seq 'then' thenRef=expr_ref 'else' elseRef=expr_ref
-    //   { $result = LamaIfRefNode.create($pred.result, $thenRef.result, $elseRef.result); }
     // TODO: add seq
 
 

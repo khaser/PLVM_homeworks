@@ -1,0 +1,7 @@
+var arr = [0, 0], x = 5;
+
+if x then arr[0] else arr[1] fi := x;
+if x != 5 then arr[0] else arr[1] fi := x * 2;
+
+write(arr[0]);
+write(arr[1])
