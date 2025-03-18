@@ -122,11 +122,24 @@ expr_add returns [LamaExprNode result] :
     ;
 
 expr_mult returns [LamaExprNode result] :
-    expr_member { $result = $expr_member.result; }
+    expr_dot_call { $result = $expr_dot_call.result; }
     (
         op=('*'|'/'|'%')
-        expr_member { $result = factory.createBinop($op, $result, $expr_member.result); }
+        expr_dot_call { $result = factory.createBinop($op, $result, $expr_dot_call.result); }
     )*
+    ;
+
+expr_dot_call returns [LamaExprNode result, String callTarget, List<LamaExprNode> args] :
+    expr_member '.' LIDENT
+    { $args = Arrays.asList($expr_member.result); $callTarget = $LIDENT.getText(); }
+    (
+        '('
+        (expr { $args.add($expr.result); })?
+        (',' expr { $args.add($expr.result); })*
+        ')'
+    )?
+    { $result = factory.createCall($callTarget, $args); }
+    | expr_member { $result = $expr_member.result; }
     ;
 
 expr_member returns [LamaExprNode result] :
@@ -138,24 +151,12 @@ expr_member returns [LamaExprNode result] :
     ;
 
 expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode> args] :
-    // classical form
     { $args = new LinkedList(); }
     (LIDENT { $callTarget = $LIDENT.getText(); })
     '('
     (expr { $args.add($expr.result); })?
     (',' expr { $args.add($expr.result); })*
     ')'
-    { $result = factory.createCall($callTarget, $args); }
-    |
-    // dot notation form
-    expr_primary '.' LIDENT
-    { $args = Arrays.asList($expr_primary.result); $callTarget = $LIDENT.getText(); }
-    (
-        '('
-        (expr { $args.add($expr.result); })?
-        (',' expr { $args.add($expr.result); })*
-        ')'
-    )?
     { $result = factory.createCall($callTarget, $args); }
     ;
 
