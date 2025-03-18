@@ -79,10 +79,6 @@ public class LamaNodeFactory {
         return createDef(sym, new LamaConstIntNode(0));
     }
 
-    public LamaExprNode createSeq(LamaExprNode left, LamaExprNode right) {
-        return new LamaSeqNode(left, right);
-    }
-
     public LamaFunDefNode createFunDef(String funName, LamaScopeNode funBody) {
         return new LamaFunDefNode(funName, funBody);
     }

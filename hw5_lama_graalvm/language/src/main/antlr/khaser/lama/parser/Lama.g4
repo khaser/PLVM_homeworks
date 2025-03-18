@@ -79,7 +79,7 @@ var_def_item returns [LamaDefNode result] :
 // Expressions
 expr_seq returns [LamaExprNode result]:
     expr { $result = $expr.result; }
-    (';' expr_seq { $result = factory.createSeq($expr.result, $expr_seq.result); })?
+    (';' expr_seq { $result = new LamaSeqNode($expr.result, $expr_seq.result); })?
     ;
 
 expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result; };
@@ -88,9 +88,6 @@ expr_assign returns [LamaExprNode result] :
     dest=expr_ref ':=' val=expr_disj { $result = LamaAssignNodeGen.create($dest.result, $val.result); }
     | expr_disj { $result = $expr_disj.result; }
     ;
-    // | LIDENT '[' idx=expr ']' ':=' val=expr_disj
-    //   { $result = LamaArrAssignNodeGen.create($LIDENT.getText(), $idx.result, $val.result); }
-
 
 expr_disj returns [LamaExprNode result] :
     expr_conj { $result = $expr_conj.result; }
@@ -176,14 +173,10 @@ expr_primary returns [LamaExprNode result] :
 
 expr_ref returns [LamaRefNode result] :
     LIDENT { $result = new LamaRefVarNode($LIDENT.getText()); }
-    | dest=expr_weak '[' idx=expr ']'
-      { $result = LamaWeakArrNodeGen.create($dest.result, $idx.result); }
+    | expr_weak { $result = $expr_weak.result; }
     | 'if' pred=expr_seq 'then' thenRef=expr_ref 'else' elseRef=expr_ref 'fi'
       { $result = LamaRefIfNodeGen.create($pred.result, $thenRef.result, $elseRef.result); }
     ;
-
-    // TODO: add seq
-
 
 expr_weak returns [LamaWeakNode result] :
     LIDENT { $result = new LamaWeakVarNode($LIDENT.getText()); }
