@@ -2,13 +2,15 @@ package khaser.lama.nodes.structs;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import khaser.lama.LamaContext;
 import khaser.lama.nodes.LamaExprNode;
 
 @NodeChild("arr")
-@NodeChild("idx")
-public abstract class LamaArrReadNode extends LamaExprNode {
+@NodeChild(value = "idx")
+public abstract class LamaArrIdxNode extends LamaExprNode {
     @Specialization
     public Object execArray(Object[] array, int idx) {
-        return array[idx];
+        Object[] ref = (Object[]) array[idx];
+        return LamaContext.unwrapRef(ref);
     }
 }

@@ -7,6 +7,7 @@ import java.lang.Integer;
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
+import khaser.lama.nodes.refs.LamaRefVarNode;
 import khaser.lama.nodes.structs.LamaArrCreateNode;
 import org.antlr.v4.runtime.Token;
 
@@ -91,7 +92,7 @@ public class LamaNodeFactory {
         if (curFunArgNames != null && curFunArgNames.contains(varName)) {
             return new LamaReadArgNode(curFunArgNames.indexOf(varName));
         } else {
-            return new LamaReadNode(varName);
+            return new LamaRefVarNode(varName);
         }
     }
 

@@ -1,7 +1,8 @@
-package khaser.lama.nodes;
+package khaser.lama.nodes.binops;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import khaser.lama.nodes.LamaExprNode;
 
 public abstract class LamaBinopNode extends LamaExprNode {
 

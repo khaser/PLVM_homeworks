@@ -14,6 +14,7 @@ import khaser.lama.nodes.*;
 import khaser.lama.nodes.binops.*;
 import khaser.lama.nodes.cfg.*;
 import khaser.lama.nodes.structs.*;
+import khaser.lama.nodes.refs.*;
 
 import java.io.Reader;
 import java.util.Arrays;
@@ -83,13 +84,13 @@ expr_seq returns [LamaExprNode result]:
 
 expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result; };
 
-// TODO: true REF/WEAK semantics
 expr_assign returns [LamaExprNode result] :
-    LIDENT ':=' val=expr_disj { $result = new LamaAssignNode($LIDENT.getText(), $val.result); }
-    | LIDENT '[' idx=expr ']' ':=' val=expr_disj
-      { $result = LamaArrAssignNodeGen.create($LIDENT.getText(), $idx.result, $val.result); }
+    dest=expr_ref ':=' val=expr_disj { $result = LamaAssignNodeGen.create($dest.result, $val.result); }
     | expr_disj { $result = $expr_disj.result; }
     ;
+    // | LIDENT '[' idx=expr ']' ':=' val=expr_disj
+    //   { $result = LamaArrAssignNodeGen.create($LIDENT.getText(), $idx.result, $val.result); }
+
 
 expr_disj returns [LamaExprNode result] :
     expr_conj { $result = $expr_conj.result; }
@@ -133,9 +134,9 @@ expr_mult returns [LamaExprNode result] :
 
 expr_member returns [LamaExprNode result] :
     expr_fun_call { $result = $expr_fun_call.result; }
-    | lit=LIDENT '[' expr ']'
-      { $result = LamaArrReadNodeGen.create(new LamaReadNode($lit.getText()), $expr.result); }
     | expr_primary { $result = $expr_primary.result; }
+    | arr=expr_member '[' idx=expr ']'
+      { $result = LamaArrIdxNodeGen.create($arr.result, $idx.result); }
     | '-' expr_primary { $result = LamaNegNodeGen.create($expr_primary.result); }
     ;
 
@@ -164,13 +165,30 @@ expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = factory.createDecimal($DECIMAL); }
     | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
-    | LIDENT { $result = factory.createRead($LIDENT); }
+    | LIDENT { $result = new LamaReadNode($LIDENT.getText()); }
     | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
     | if_expr { $result = $if_expr.result; }
     | while_expr { $result = $while_expr.result; }
     | for_expr { $result = $for_expr.result; }
     | array_expr { $result = $array_expr.result; }
+    ;
+
+expr_ref returns [LamaRefNode result] :
+    LIDENT { $result = new LamaRefVarNode($LIDENT.getText()); }
+    | dest=expr_weak '[' idx=expr ']'
+      { $result = LamaWeakArrNodeGen.create($dest.result, $idx.result); }
+    ;
+
+    // | 'if' pred=expr_seq 'then' thenRef=expr_ref 'else' elseRef=expr_ref
+    //   { $result = LamaIfRefNode.create($pred.result, $thenRef.result, $elseRef.result); }
+    // TODO: add seq
+
+
+expr_weak returns [LamaWeakNode result] :
+    LIDENT { $result = new LamaWeakVarNode($LIDENT.getText()); }
+    | dest=expr_weak '[' idx=expr ']'
+      { $result = LamaWeakArrNodeGen.create($dest.result, $idx.result); }
     ;
 
 array_expr returns [LamaExprNode result, List<LamaExprNode> els] :

@@ -19,7 +19,15 @@ public final class LamaContext {
         return REF.get(node);
     }
 
-    private final Stack<HashMap<String, Object>> varScopes = new Stack<>();
+    public static Object[] wrapRef(Object o) {
+        return new Object[]{o};
+    }
+
+    public static Object unwrapRef(Object[] o) {
+        return o[0];
+    }
+
+    private final Stack<HashMap<String, Object[]>> varScopes = new Stack<>();
     private final Stack<HashMap<String, CallTarget>> funcScopes = new Stack<>();
 
 
@@ -41,7 +49,7 @@ public final class LamaContext {
         funcScopes.pop();
     }
 
-    private HashMap<String, Object> findVarScope(String sym) {
+    private HashMap<String, Object[]> findVarScope(String sym) {
         return varScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
@@ -49,18 +57,19 @@ public final class LamaContext {
         return funcScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
     }
 
-    public void setVar(String sym, Object value) {
+    public Object getVar(String sym) {
         var scope = this.findVarScope(sym);
-        scope.put(sym, value);
+        return unwrapRef(scope.get(sym));
     }
 
-    public Object getVar(String sym) {
+    public Object[] getVarRef(String sym) {
         var scope = this.findVarScope(sym);
         return scope.get(sym);
     }
 
+
     public void defVar(String sym, Object value) {
-        varScopes.peek().put(sym, value);
+        varScopes.peek().put(sym, wrapRef(value));
     }
 
     public CallTarget getFun(String sym) {

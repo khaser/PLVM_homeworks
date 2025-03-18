@@ -1,0 +1,17 @@
+var arr = [
+            [0, 0, 0],
+            [0, 0, 0]
+          ];
+
+
+for var i; i := 0, i < 2, i := i + 1 do
+    for var j; j := 0, j < 3, j := j + 1 do
+        arr[i][j] := (i + 1) * (j + 1)
+    od
+od;
+
+for var i; i := 0, i < 2, i := i + 1 do
+    for var j; j := 0, j < 3, j := j + 1 do
+        write(arr[i][j])
+    od
+od
