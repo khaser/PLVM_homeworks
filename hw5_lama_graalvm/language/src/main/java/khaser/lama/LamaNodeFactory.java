@@ -92,7 +92,7 @@ public class LamaNodeFactory {
         if (curFunArgNames != null && curFunArgNames.contains(varName)) {
             return new LamaReadArgNode(curFunArgNames.indexOf(varName));
         } else {
-            return new LamaRefVarNode(varName);
+            return new LamaReadNode(varName);
         }
     }
 
