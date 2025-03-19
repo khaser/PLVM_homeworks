@@ -21,11 +21,11 @@ public class LamaSexprPattern extends LamaPattern {
     @Override
     public Boolean checkMatch(Object scrut) {
         if (scrut instanceof LamaSexpr cscrut) {
-            if (cscrut.args.length != subpats.length
+            if (cscrut.length() != subpats.length
                 || !Objects.equals(cscrut.ident, ident)) return false;
-            int n = cscrut.args.length;
+            int n = cscrut.length();
             for (int i = 0; i < n; ++i) {
-                if (!subpats[i].checkMatch(LamaContext.unwrapRef((Object[]) cscrut.args[i]))) return false;
+                if (!subpats[i].checkMatch(cscrut.getEl(i))) return false;
             }
             return true;
         }
@@ -38,7 +38,7 @@ public class LamaSexprPattern extends LamaPattern {
         int n = subpats.length;
         var res = new LinkedList<Binding>();
         for (int i = 0; i < n; ++i) {
-            res.addAll(subpats[i].collectBindings(LamaContext.unwrapRef((Object[]) cscrut.args[i])));
+            res.addAll(subpats[i].collectBindings(cscrut.getEl(i)));
         }
         return res;
     }

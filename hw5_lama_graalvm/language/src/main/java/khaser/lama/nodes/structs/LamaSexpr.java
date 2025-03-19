@@ -5,31 +5,30 @@ import khaser.lama.LamaContext;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public class LamaSexpr {
+public class LamaSexpr extends LamaArray {
     public String ident;
-    public Object[][] args;
 
     public LamaSexpr(String ident, Object[] args) {
+        super(args);
         this.ident = ident;
-        this.args = Arrays.stream(args).map(LamaContext::wrapRef).toArray(Object[][]::new);
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof LamaSexpr oth) {
-            return this.ident.equals(oth.ident) && Arrays.equals(this.args, oth.args);
+            return this.ident.equals(oth.ident) && super.equals(obj);
         }
         return false;
     }
 
     @Override
     public String toString() {
-        if (args.length > 0) {
+        if (els.length > 0) {
             return "%s (%s)".formatted(
                                 ident,
-                                Arrays.stream(args)
+                                Arrays.stream(els)
                                         .map(LamaContext::unwrapRef)
-                                        .map(el -> el.toString())
+                                        .map(Object::toString)
                                         .collect(Collectors.joining(", ")));
         } else {
             return ident;
