@@ -14,11 +14,6 @@ public class LamaArrayPattern extends LamaPattern {
         this.subpats = subpats;
     }
 
-    public LamaArrayPattern(LamaPattern[] subpats, String bindName) {
-        super(bindName);
-        this.subpats = subpats;
-    }
-
     @Override
     public Boolean checkMatch(Object scrut) {
         if (!(scrut instanceof Object[])) return false;
@@ -33,12 +28,12 @@ public class LamaArrayPattern extends LamaPattern {
     }
 
     @Override
-    protected List<Binding> getChildBindings(Object scrut) {
+    protected List<Binding> collectBindings(Object scrut) {
         var cscrut = (Object[]) scrut;
         int n = subpats.length;
         var res = new LinkedList<Binding>();
         for (int i = 0; i < n; ++i) {
-            res.addAll(subpats[i].getBindings(LamaContext.unwrapRef((Object[]) cscrut[i])));
+            res.addAll(subpats[i].collectBindings(LamaContext.unwrapRef((Object[]) cscrut[i])));
         }
         return res;
     }

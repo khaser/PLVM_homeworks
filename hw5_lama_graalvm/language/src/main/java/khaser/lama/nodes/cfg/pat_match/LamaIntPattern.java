@@ -12,18 +12,13 @@ public class LamaIntPattern extends LamaPattern {
         this.expecVal = expecVal;
     }
 
-    public LamaIntPattern(Integer expecVal, String bindName) {
-        super(bindName);
-        this.expecVal = expecVal;
-    }
-
     @Override
     public Boolean checkMatch(Object scrut) {
         return scrut.equals(expecVal);
     }
 
     @Override
-    protected List<Binding> getChildBindings(Object scrut) {
+    protected List<Binding> collectBindings(Object scrut) {
         return new LinkedList<>();
     }
 }

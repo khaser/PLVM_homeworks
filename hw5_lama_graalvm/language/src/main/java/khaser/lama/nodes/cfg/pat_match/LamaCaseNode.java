@@ -27,7 +27,7 @@ public class LamaCaseNode extends LamaExprNode {
     private Object executeBranch(VirtualFrame frame, LamaCaseBranch branch, Object scrutVal) {
         var ctx = getContext();
         ctx.pushScope();
-        for (Binding bind : branch.pat.getBindings(scrutVal)) {
+        for (Binding bind : branch.pat.collectBindings(scrutVal)) {
             ctx.defVar(bind.bindName, bind.value);
         }
         var res = branch.scope.execute(frame);

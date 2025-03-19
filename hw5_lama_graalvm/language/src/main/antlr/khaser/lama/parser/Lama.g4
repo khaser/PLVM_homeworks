@@ -259,16 +259,16 @@ case_simpl_pattern returns [LamaPattern result] :
     | '_' { $result = new LamaWildcardPattern(); }
     | case_array_pattern
       { $result = new LamaArrayPattern($case_array_pattern.result.toArray(new LamaPattern[0])); }
+    | LIDENT '@' case_pattern { $result = new LamaBindPattern($LIDENT.getText(), $case_pattern.result); }
     ;
-    // TODO: LIDENT with binding
     // TODO: string pattern
 
 case_array_pattern returns [List<LamaPattern> result] :
     { $result = new LinkedList<LamaPattern>(); }
     '['
     (
-        subp=case_simpl_pattern { $result.add($subp.result); }
-        (',' subp=case_simpl_pattern { $result.add($subp.result); })*
+        case_pattern { $result.add($case_pattern.result); }
+        (',' case_pattern { $result.add($case_pattern.result); })*
     )?
     ']'
     ;

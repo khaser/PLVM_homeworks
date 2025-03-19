@@ -9,17 +9,13 @@ public class LamaWildcardPattern extends LamaPattern {
         super();
     }
 
-    public LamaWildcardPattern(String bindName) {
-        super(bindName);
-    }
-
     @Override
     public Boolean checkMatch(Object scrut) {
         return true;
     }
 
     @Override
-    protected List<Binding> getChildBindings(Object scrut) {
+    protected List<Binding> collectBindings(Object scrut) {
         return new LinkedList<>();
     }
 }
