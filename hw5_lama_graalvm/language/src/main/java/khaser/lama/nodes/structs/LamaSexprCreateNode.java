@@ -22,7 +22,7 @@ public class LamaSexprCreateNode extends LamaExprNode {
     public Object execute(VirtualFrame frame) {
         return new LamaSexpr(ident,
                                 Arrays.stream(this.args)
-                                .map(expr -> expr.execute(frame))
-                                .map(LamaContext::wrapRef).toArray());
+                                    .map(expr -> expr.execute(frame))
+                                    .toArray());
     }
 }

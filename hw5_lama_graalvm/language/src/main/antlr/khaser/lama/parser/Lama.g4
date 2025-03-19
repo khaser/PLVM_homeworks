@@ -163,7 +163,7 @@ expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode
 
 expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = new LamaConstIntNode(factory.dec2Int($DECIMAL)); }
-    | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
+    | STRING { $result = new LamaStringCreateNode($STRING.getText().replaceAll("\"", "")); }
     | CHAR { $result = new LamaConstIntNode(factory.char2Int($CHAR)); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     | 'skip' { $result = new LamaSkipNode(); }

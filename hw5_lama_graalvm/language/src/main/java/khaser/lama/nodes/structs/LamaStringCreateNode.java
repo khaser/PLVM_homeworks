@@ -4,15 +4,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import khaser.lama.LamaContext;
 import khaser.lama.nodes.LamaExprNode;
 
-public class LamaStringLiteralNode extends LamaExprNode {
+public class LamaStringCreateNode extends LamaExprNode {
 
     String str;
 
-    public LamaStringLiteralNode(String str)  {
+    public LamaStringCreateNode(String str)  {
         this.str = str;
     }
     @Override
-    public Object[] execute(VirtualFrame frame) {
-        return str.chars().boxed().map(LamaContext::wrapRef).toArray();
+    public LamaString execute(VirtualFrame frame) {
+        return new LamaString(str);
     }
 }

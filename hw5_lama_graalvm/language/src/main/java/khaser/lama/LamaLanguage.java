@@ -40,6 +40,8 @@ public final class LamaLanguage extends TruffleLanguage<LamaContext> {
         ctx.defFun("write", writeFunc.getCallTarget());
         var lengthFunc = new LamaFunctionRootNode(this, LamaBuiltinLengthNodeGen.create(new LamaReadArgNode(0)));
         ctx.defFun("length", lengthFunc.getCallTarget());
+        var stringFunc = new LamaFunctionRootNode(this, LamaBuiltinStringNodeGen.create(new LamaReadArgNode(0)));
+        ctx.defFun("string", stringFunc.getCallTarget());
 
         return ctx;
     }

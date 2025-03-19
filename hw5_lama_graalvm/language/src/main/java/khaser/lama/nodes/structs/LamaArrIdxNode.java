@@ -8,9 +8,10 @@ import khaser.lama.nodes.LamaExprNode;
 @NodeChild("arr")
 @NodeChild(value = "idx")
 public abstract class LamaArrIdxNode extends LamaExprNode {
+
     @Specialization
-    public Object execArray(Object[] array, int idx) {
-        Object[] ref = (Object[]) array[idx];
-        return LamaContext.unwrapRef(ref);
+    public Object execArray(LamaArray array, int idx) {
+        return array.getEl(idx);
     }
+
 }

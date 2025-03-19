@@ -14,9 +14,7 @@ public class LamaArrCreateNode extends LamaExprNode {
         this.els = els;
     }
     @Override
-    public Object[] execute(VirtualFrame frame) {
-        return Arrays.stream(this.els)
-                .map(expr -> expr.execute(frame))
-                .map(LamaContext::wrapRef).toArray();
+    public LamaArray execute(VirtualFrame frame) {
+        return new LamaArray(Arrays.stream(this.els).map(expr -> expr.execute(frame)).toArray());
     }
 }
