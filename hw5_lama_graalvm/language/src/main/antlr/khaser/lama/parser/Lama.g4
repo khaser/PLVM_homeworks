@@ -254,12 +254,24 @@ case_pattern returns [LamaPattern result] :
 
 case_simpl_pattern returns [LamaPattern result] :
     DECIMAL { $result = new LamaIntPattern(factory.dec2Int($DECIMAL)); }
-    // | '-' DECIMAL { $result = new LamaCaseIntNode(-factory.dec2Int($DECIMAL)); }
-    // | CHAR { $result = new LamaCaseIntNode(factory.char2Int($CHAR)); }
-    // | '_' { $result = new LamaCaseWildcardNode(); }
+    | '-' DECIMAL { $result = new LamaIntPattern(-factory.dec2Int($DECIMAL)); }
+    | CHAR { $result = new LamaIntPattern(factory.char2Int($CHAR)); }
+    | '_' { $result = new LamaWildcardPattern(); }
+    | case_array_pattern
+      { $result = new LamaArrayPattern($case_array_pattern.result.toArray(new LamaPattern[0])); }
     ;
     // TODO: LIDENT with binding
-    // TODO: structure patterns
+    // TODO: string pattern
+
+case_array_pattern returns [List<LamaPattern> result] :
+    { $result = new LinkedList<LamaPattern>(); }
+    '['
+    (
+        subp=case_simpl_pattern { $result.add($subp.result); }
+        (',' subp=case_simpl_pattern { $result.add($subp.result); })*
+    )?
+    ']'
+    ;
 
 
 fragment LETTER : [A-Z] | [a-z] | '_';
@@ -274,3 +286,4 @@ CHAR : '\'' (~('\'')|'\\n'|'\\t') '\'';
 WS : ' ' -> skip;
 TAB : '\t' -> skip;
 NEWLINE : '\n' -> skip;
+BLOCK_COMMENT : '(*' .*? '*)' -> skip;
