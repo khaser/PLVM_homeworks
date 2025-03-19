@@ -13,6 +13,7 @@ import khaser.lama.LamaNodeFactory;
 import khaser.lama.nodes.*;
 import khaser.lama.nodes.binops.*;
 import khaser.lama.nodes.cfg.*;
+import khaser.lama.nodes.cfg.pat_match.*;
 import khaser.lama.nodes.structs.*;
 import khaser.lama.nodes.refs.*;
 
@@ -161,9 +162,9 @@ expr_fun_call returns [LamaExprNode result, String callTarget, List<LamaExprNode
     ;
 
 expr_primary returns [LamaExprNode result] :
-    DECIMAL { $result = factory.createDecimal($DECIMAL); }
+    DECIMAL { $result = new LamaConstIntNode(factory.dec2Int($DECIMAL)); }
     | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
-    | CHAR { $result = factory.createChar($CHAR); }
+    | CHAR { $result = new LamaConstIntNode(factory.char2Int($CHAR)); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
@@ -171,6 +172,7 @@ expr_primary returns [LamaExprNode result] :
     | while_expr { $result = $while_expr.result; }
     | for_expr { $result = $for_expr.result; }
     | array_expr { $result = $array_expr.result; }
+    | case_expr { $result = $case_expr.result; }
     ;
 
 expr_ref returns [LamaRefNode result] :
@@ -197,6 +199,7 @@ array_expr returns [LamaExprNode result, List<LamaExprNode> els] :
     { $result = factory.createArrayObject($els); }
     ;
 
+// Control flow structures
 if_expr returns [LamaExprNode result] :
     'if' expr_seq 'then' scope_expr
     { $result = factory.createIf($expr_seq.result, $scope_expr.result); }
@@ -224,6 +227,40 @@ for_expr returns [LamaExprNode result] :
     { $result = new LamaForNode($init.result, $cond.result, $iter.result, $body.result); }
     'od'
     ;
+
+// Pattern matching
+case_expr returns [LamaExprNode result] :
+    'case' scrut=expr 'of'
+    { var branches = new LinkedList<LamaCaseBranch>(); }
+    case_branch { branches.add($case_branch.result); }
+    (
+        '|' case_branch { branches.add($case_branch.result); }
+    )*
+    'esac'
+    { $result = new LamaCaseNode($scrut.result, branches.toArray(new LamaCaseBranch[0])); }
+    ;
+
+case_branch returns [LamaCaseBranch result] :
+    pat=case_pattern '->' scope=scope_expr
+    { $result = new LamaCaseBranch($pat.result, $scope.result); }
+    ;
+
+case_pattern returns [LamaPattern result] :
+    pat=case_simpl_pattern { $result = $pat.result; }
+    ;
+
+// TODO: add with lists support
+// case_cons_pattern returns [] :
+
+case_simpl_pattern returns [LamaPattern result] :
+    DECIMAL { $result = new LamaIntPattern(factory.dec2Int($DECIMAL)); }
+    // | '-' DECIMAL { $result = new LamaCaseIntNode(-factory.dec2Int($DECIMAL)); }
+    // | CHAR { $result = new LamaCaseIntNode(factory.char2Int($CHAR)); }
+    // | '_' { $result = new LamaCaseWildcardNode(); }
+    ;
+    // TODO: LIDENT with binding
+    // TODO: structure patterns
+
 
 fragment LETTER : [A-Z] | [a-z] | '_';
 fragment DIGIT : [0-9];

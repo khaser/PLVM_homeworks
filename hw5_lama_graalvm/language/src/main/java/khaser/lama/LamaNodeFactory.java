@@ -50,18 +50,18 @@ public class LamaNodeFactory {
         };
     }
 
-    public LamaExprNode createDecimal(Token literalToken) {
-        return new LamaConstIntNode(Integer.parseInt(literalToken.getText()));
+    public int dec2Int(Token literalToken) {
+        return Integer.parseInt(literalToken.getText());
     }
 
-    public LamaExprNode createChar(Token literalToken) {
+    public int char2Int(Token literalToken) {
         String token = literalToken.getText().replaceAll("\'", "");
         if (Objects.equals(token, "\\n")) {
-            return new LamaConstIntNode('\n');
+            return '\n';
         } else if (Objects.equals(token, "\\t")) {
-            return new LamaConstIntNode('\t');
+            return '\t';
         } else {
-            return new LamaConstIntNode(token.charAt(0));
+            return token.charAt(0);
         }
     }
 
