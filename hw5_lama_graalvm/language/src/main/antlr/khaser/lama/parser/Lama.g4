@@ -167,6 +167,7 @@ expr_primary returns [LamaExprNode result] :
     | CHAR { $result = new LamaConstIntNode(factory.char2Int($CHAR)); }
     | LIDENT { $result = factory.createRead($LIDENT); }
     | 'skip' { $result = new LamaSkipNode(); }
+    | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | if_expr { $result = $if_expr.result; }
     | while_expr { $result = $while_expr.result; }
     | for_expr { $result = $for_expr.result; }
@@ -202,10 +203,12 @@ array_expr returns [LamaExprNode result, List<LamaExprNode> els] :
 s_expr returns [LamaExprNode result] :
     { var els = new LinkedList<LamaExprNode>(); }
     UIDENT
+    (
     '('
-    (expr { els.add($expr.result); })?
+    expr { els.add($expr.result); }
     (',' expr { els.add($expr.result); })*
     ')'
+    )?
     { $result = factory.createSexprObject($UIDENT.getText(), els); }
     ;
 
