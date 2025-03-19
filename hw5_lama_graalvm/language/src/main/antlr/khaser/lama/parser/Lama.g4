@@ -166,13 +166,13 @@ expr_primary returns [LamaExprNode result] :
     | STRING { $result = new LamaStringLiteralNode($STRING.getText().replaceAll("\"", "")); }
     | CHAR { $result = new LamaConstIntNode(factory.char2Int($CHAR)); }
     | LIDENT { $result = factory.createRead($LIDENT); }
-    | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | 'skip' { $result = new LamaSkipNode(); }
     | if_expr { $result = $if_expr.result; }
     | while_expr { $result = $while_expr.result; }
     | for_expr { $result = $for_expr.result; }
     | array_expr { $result = $array_expr.result; }
     | case_expr { $result = $case_expr.result; }
+    | s_expr { $result = $s_expr.result; }
     ;
 
 expr_ref returns [LamaRefNode result] :
@@ -197,6 +197,16 @@ array_expr returns [LamaExprNode result, List<LamaExprNode> els] :
     (',' expr { $els.add($expr.result); })*
     ']'
     { $result = factory.createArrayObject($els); }
+    ;
+
+s_expr returns [LamaExprNode result] :
+    { var els = new LinkedList<LamaExprNode>(); }
+    UIDENT
+    '('
+    (expr { els.add($expr.result); })?
+    (',' expr { els.add($expr.result); })*
+    ')'
+    { $result = factory.createSexprObject($UIDENT.getText(), els); }
     ;
 
 // Control flow structures
@@ -257,20 +267,34 @@ case_simpl_pattern returns [LamaPattern result] :
     | '-' DECIMAL { $result = new LamaIntPattern(-factory.dec2Int($DECIMAL)); }
     | CHAR { $result = new LamaIntPattern(factory.char2Int($CHAR)); }
     | '_' { $result = new LamaWildcardPattern(); }
-    | case_array_pattern
-      { $result = new LamaArrayPattern($case_array_pattern.result.toArray(new LamaPattern[0])); }
+    | LIDENT { $result = new LamaBindPattern($LIDENT.getText(), new LamaWildcardPattern()); }
     | LIDENT '@' case_pattern { $result = new LamaBindPattern($LIDENT.getText(), $case_pattern.result); }
+    | case_array_pattern { $result = $case_array_pattern.result; }
+    | case_sexpr_pattern { $result = $case_sexpr_pattern.result; }
     ;
     // TODO: string pattern
 
-case_array_pattern returns [List<LamaPattern> result] :
-    { $result = new LinkedList<LamaPattern>(); }
+case_array_pattern returns [LamaPattern result] :
+    { var args = new LinkedList<LamaPattern>(); }
     '['
     (
-        case_pattern { $result.add($case_pattern.result); }
-        (',' case_pattern { $result.add($case_pattern.result); })*
+        case_pattern { args.add($case_pattern.result); }
+        (',' case_pattern { args.add($case_pattern.result); })*
     )?
     ']'
+    { $result = new LamaArrayPattern(args.toArray(new LamaPattern[0])); }
+    ;
+
+case_sexpr_pattern returns [LamaPattern result] :
+    { var args = new LinkedList<LamaPattern>(); }
+    UIDENT
+    (
+    '('
+        case_pattern { args.add($case_pattern.result); }
+        (',' case_pattern { args.add($case_pattern.result); })*
+    ')'
+    )?
+    { $result = new LamaSexprPattern($UIDENT.getText(), args.toArray(new LamaPattern[0])); }
     ;
 
 

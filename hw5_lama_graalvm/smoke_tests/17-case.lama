@@ -1,35 +1,8 @@
-var x = 5;
-var y = 'a';
-var arr = [1, [3, 4], [5]];
+var s = S (Bac (2));
 
-(*
-case x of
-    1 -> write (0)
-    | 5 -> write (1)
-    | 7 -> write (2)
-esac;
-
-case x of
-    1 -> write (0)
-    | 7 -> write (1)
-    | _ -> write (2)
-esac;
-
-case y of
-    'a' -> write (0)
-    | 7 -> write (1)
-    | _ -> write (2)
-esac;
-
-case arr of
+case s of
     [1, [3, _]] -> write (0)
-    | [1, [3, _], _] -> write (1)
-    | _ -> write (2)
-esac
-*)
-
-case arr of
-    [1, [3, _]] -> write (0)
-    | [1, subarr@[3, _], _] -> write (subarr[1])
-    | _ -> write (2)
+    | S (S (_)) -> write (1)
+    | S (Bac (x)) -> write (x)
+    | _ -> write (3)
 esac

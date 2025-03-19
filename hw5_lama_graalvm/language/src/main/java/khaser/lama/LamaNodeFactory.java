@@ -9,6 +9,7 @@ import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
 import khaser.lama.nodes.structs.LamaArrCreateNode;
+import khaser.lama.nodes.structs.LamaSexprCreateNode;
 import org.antlr.v4.runtime.Token;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -119,6 +120,10 @@ public class LamaNodeFactory {
 
     public LamaExprNode createArrayObject(List<LamaExprNode> els) {
         return new LamaArrCreateNode(els.toArray(new LamaExprNode[0]));
+    }
+
+    public LamaExprNode createSexprObject(String ident, List<LamaExprNode> args) {
+        return new LamaSexprCreateNode(ident, args.toArray(new LamaExprNode[0]));
     }
 
     public LamaExprNode createIf(LamaExprNode pred, LamaScopeNode thenScope, LamaScopeNode elseScope) {
