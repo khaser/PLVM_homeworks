@@ -31,16 +31,17 @@ public final class LamaLanguage extends TruffleLanguage<LamaContext> {
     @Override
     protected LamaContext createContext(Env env) {
         var ctx = new LamaContext(env);
+        var rootFrame = new LamaFrame(null);
+        ctx.curFrame = rootFrame;
 
-        // create global scope
-        var readFunc = new LamaFunctionRootNode(this, new LamaBuiltinReadNode ());
-        ctx.defFunGlobal("read", readFunc.getCallTarget());
-        var writeFunc = new LamaFunctionRootNode(this, new LamaBuiltinWriteNode(new LamaReadArgNode(0)));
-        ctx.defFunGlobal("write", writeFunc.getCallTarget());
-        var lengthFunc = new LamaFunctionRootNode(this, LamaBuiltinLengthNodeGen.create(new LamaReadArgNode(0)));
-        ctx.defFunGlobal("length", lengthFunc.getCallTarget());
-        var stringFunc = new LamaFunctionRootNode(this, LamaBuiltinStringNodeGen.create(new LamaReadArgNode(0)));
-        ctx.defFunGlobal("string", stringFunc.getCallTarget());
+        var readFunc = new LamaFunctionRootNode(this, new LamaBuiltinReadNode (), rootFrame, ctx);
+        ctx.defFun("read", readFunc.getCallTarget());
+        var writeFunc = new LamaFunctionRootNode(this, new LamaBuiltinWriteNode(new LamaReadArgNode(0)), rootFrame, ctx);
+        ctx.defFun("write", writeFunc.getCallTarget());
+        var lengthFunc = new LamaFunctionRootNode(this, LamaBuiltinLengthNodeGen.create(new LamaReadArgNode(0)), rootFrame, ctx);
+        ctx.defFun("length", lengthFunc.getCallTarget());
+        var stringFunc = new LamaFunctionRootNode(this, LamaBuiltinStringNodeGen.create(new LamaReadArgNode(0)), rootFrame, ctx);
+        ctx.defFun("string", stringFunc.getCallTarget());
 
         return ctx;
     }

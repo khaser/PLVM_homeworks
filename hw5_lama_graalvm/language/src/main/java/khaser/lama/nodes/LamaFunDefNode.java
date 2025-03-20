@@ -2,9 +2,8 @@ package khaser.lama.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
-import khaser.lama.nodes.builtins.LamaBuiltinWriteNode;
+import khaser.lama.LamaFrame;
 import khaser.lama.nodes.funcs.LamaFunctionRootNode;
-import khaser.lama.nodes.funcs.LamaReadArgNode;
 
 public class LamaFunDefNode extends LamaNode {
 
@@ -25,12 +24,9 @@ public class LamaFunDefNode extends LamaNode {
     }
 
     public void register() {
-        var funRootNode = new LamaFunctionRootNode(currentTruffleLanguage(), this.body);
-        getContext().defFun(funName, funRootNode.getCallTarget());
+        var ctx = getContext();
+        var funRootNode = new LamaFunctionRootNode(currentTruffleLanguage(), this.body, new LamaFrame(ctx.curFrame), ctx);
+        ctx.defFun(funName, funRootNode.getCallTarget());
     }
 
-    public void registerGlobal() {
-        var funRootNode = new LamaFunctionRootNode(currentTruffleLanguage(), this.body);
-        getContext().defFunGlobal(funName, funRootNode.getCallTarget());
-    }
 }

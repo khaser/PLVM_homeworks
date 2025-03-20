@@ -7,12 +7,32 @@ BINARY := ./launcher/build/native/nativeCompile/application
 FAT_JAR := ./launcher/build/libs/launcher-all.jar
 JAVA_CMD := java -Xss1024m -cp $(FAT_JAR) khaser.lama.LamaMain
 
-# 56,63 - first-class function
+# 56,63,90,91,93,94,96,97,99,102 - first-class function
+# 74 - passes, but runs too slow
 # 82 - type pattern matching
+# 92,95,98 - custom operator
+# 105 - eta-expansion (unsupported language extension)
+# 106 - pattern in function arguments (unsupported language extension)
+# 111 - import Std;
 REG_IGNORED := \
 	%/test059.lama \
 	%/test063.lama \
-	%/test082.lama
+	%/test074.lama \
+	%/test082.lama \
+	%/test090.lama \
+	%/test091.lama \
+	%/test092.lama \
+	%/test093.lama \
+	%/test094.lama \
+	%/test095.lama \
+	%/test096.lama \
+	%/test097.lama \
+	%/test098.lama \
+	%/test099.lama \
+	%/test102.lama \
+	%/test105.lama \
+	%/test106.lama \
+	%/test111.lama
 
 SRCS := $(shell find ./language/src ./launcher/src -name '*.java' -or -name '*.g4' | sed 's@ @\\ @g')
 

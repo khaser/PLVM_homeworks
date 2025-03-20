@@ -3,14 +3,19 @@ package khaser.lama;
 import com.oracle.truffle.api.CallTarget;
 
 import java.util.HashMap;
-import java.util.Optional;
 import java.util.Stack;
 
-public class LamaFrame {
-    public final Stack<HashMap<String, Object[]>> vars = new Stack<>();
-    public final Stack<HashMap<String, CallTarget>> funcs = new Stack<>();
+import static khaser.lama.LamaContext.unwrapRef;
 
-    public LamaFrame() {
+public class LamaFrame {
+    private final Stack<HashMap<String, Object[]>> vars = new Stack<>();
+    private final Stack<HashMap<String, CallTarget>> funcs = new Stack<>();
+
+    final private LamaFrame rootFrame;
+
+    public LamaFrame(LamaFrame rootFrame) {
+        this.rootFrame = rootFrame;
+        pushScope();
     }
 
     public void pushScope() {
@@ -23,12 +28,20 @@ public class LamaFrame {
         funcs.pop();
     }
 
-    Optional<HashMap<String, Object[]>> findVarScope(String sym) {
-        return vars.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b);
+    Object[] getVarRef(String sym) {
+        return vars.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b)
+                            .map(m -> m.get(sym))
+                            .orElseGet(() -> rootFrame.getVarRef(sym));
     }
 
-    Optional<HashMap<String, CallTarget>> findFuncScope(String sym) {
-        return funcs.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b);
+    Object getVar(String sym) {
+        return unwrapRef(getVarRef(sym));
+    }
+
+    CallTarget getFun(String sym) {
+        return funcs.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b)
+                             .map(m -> m.get(sym))
+                             .orElseGet(() -> rootFrame.getFun(sym));
     }
 
     public void defFun(String sym, CallTarget func) {
