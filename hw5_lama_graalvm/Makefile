@@ -16,8 +16,6 @@ REG_IGNORED := \
 
 SRCS := $(shell find ./language/src ./launcher/src -name '*.java' -or -name '*.g4' | sed 's@ @\\ @g')
 
-# TODO: add ignored tests list
-
 REG_TESTS=$(sort $(filter-out $(REG_IGNORED: =,), $(wildcard $(REG_TESTS_DIR)/test*.lama)))
 SMOKE_TESTS=$(sort $(wildcard $(SMOKE_TESTS_DIR)/*.lama))
 

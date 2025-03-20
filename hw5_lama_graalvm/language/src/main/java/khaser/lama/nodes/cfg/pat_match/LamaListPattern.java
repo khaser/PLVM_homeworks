@@ -1,23 +1,23 @@
 package khaser.lama.nodes.cfg.pat_match;
 
 import khaser.lama.LamaContext;
-import khaser.lama.nodes.structs.LamaArray;
+import khaser.lama.nodes.structs.LamaList;
 
 import java.util.LinkedList;
 import java.util.List;
 
-public class LamaArrayPattern extends LamaPattern {
+public class LamaListPattern extends LamaPattern {
 
     LamaPattern[] subpats;
 
-    public LamaArrayPattern(LamaPattern[] subpats) {
+    public LamaListPattern(LamaPattern[] subpats) {
         super();
         this.subpats = subpats;
     }
 
     @Override
     public Boolean checkMatch(Object scrut) {
-        if (scrut instanceof LamaArray cscrut) {
+        if (scrut instanceof LamaList cscrut) {
             if (cscrut.length() != subpats.length) return false;
             int n = cscrut.length();
             for (int i = 0; i < n; ++i) {
@@ -30,7 +30,7 @@ public class LamaArrayPattern extends LamaPattern {
 
     @Override
     protected List<Binding> collectBindings(Object scrut) {
-        var cscrut = (LamaArray) scrut;
+        var cscrut = (LamaList) scrut;
         int n = subpats.length;
         var res = new LinkedList<Binding>();
         for (int i = 0; i < n; ++i) {

@@ -85,6 +85,11 @@ expr returns [LamaExprNode result] : expr_assign { $result = $expr_assign.result
 
 expr_assign returns [LamaExprNode result] :
     dest=expr_ref ':=' val=expr_assign { $result = LamaAssignNodeGen.create($dest.result, $val.result); }
+    | expr_cons { $result = $expr_cons.result; }
+    ;
+
+expr_cons returns [LamaExprNode result] :
+    head=expr_disj ':' tail=expr_cons { $result = LamaListConsNodeGen.create($head.result, $tail.result); }
     | expr_disj { $result = $expr_disj.result; }
     ;
 
@@ -172,6 +177,7 @@ expr_primary returns [LamaExprNode result] :
     | array_expr { $result = $array_expr.result; }
     | case_expr { $result = $case_expr.result; }
     | s_expr { $result = $s_expr.result; }
+    | list_expr { $result = $list_expr.result; }
     ;
 
 expr_ref returns [LamaRefNode result] :
@@ -189,6 +195,7 @@ expr_weak returns [LamaWeakNode result] :
       { $result = LamaWeakArrNodeGen.create($dest.result, $idx.result); }
     ;
 
+// Structures
 array_expr returns [LamaExprNode result, List<LamaExprNode> els] :
     { $els = new LinkedList(); }
     '['
@@ -210,7 +217,16 @@ s_expr returns [LamaExprNode result] :
     { $result = factory.createSexprObject($UIDENT.getText(), els); }
     ;
 
-// Control flow structures
+list_expr returns [LamaExprNode result] :
+    { List<LamaExprNode> els = new LinkedList<>(); }
+    '{'
+    (expr { els.add($expr.result); })?
+    (',' expr { els.add($expr.result); })*
+    '}'
+    { $result = factory.createListObject(els); }
+    ;
+
+// Control flow
 if_expr returns [LamaExprNode result] :
     'if' expr_seq 'then' scope_expr
     { $result = factory.createIf($expr_seq.result, $scope_expr.result); }
@@ -258,10 +274,13 @@ case_branch returns [LamaCaseBranch result] :
 
 case_pattern returns [LamaPattern result] :
     pat=case_simpl_pattern { $result = $pat.result; }
+    | case_cons_pattern { $result = $case_cons_pattern.result; }
     ;
 
-// TODO: add with lists support
-// case_cons_pattern returns [] :
+case_cons_pattern returns [LamaPattern result] :
+    head=case_simpl_pattern ':' tail=case_pattern
+    { $result = new LamaConsPattern($head.result, $tail.result); }
+    ;
 
 case_simpl_pattern returns [LamaPattern result] :
     DECIMAL { $result = new LamaIntPattern(factory.dec2Int($DECIMAL)); }
@@ -272,6 +291,7 @@ case_simpl_pattern returns [LamaPattern result] :
     | LIDENT '@' case_pattern { $result = new LamaBindPattern($LIDENT.getText(), $case_pattern.result); }
     | case_array_pattern { $result = $case_array_pattern.result; }
     | case_sexpr_pattern { $result = $case_sexpr_pattern.result; }
+    | case_list_pattern { $result = $case_list_pattern.result; }
     ;
     // TODO: string pattern
 
@@ -296,6 +316,17 @@ case_sexpr_pattern returns [LamaPattern result] :
     ')'
     )?
     { $result = new LamaSexprPattern($UIDENT.getText(), args.toArray(new LamaPattern[0])); }
+    ;
+
+case_list_pattern returns [LamaPattern result] :
+    { var args = new LinkedList<LamaPattern>(); }
+    '{'
+    (
+        case_pattern { args.add($case_pattern.result); }
+        (',' case_pattern { args.add($case_pattern.result); })*
+    )?
+    '}'
+    { $result = new LamaListPattern(args.toArray(new LamaPattern[0])); }
     ;
 
 
