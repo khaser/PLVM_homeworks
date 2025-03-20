@@ -27,7 +27,7 @@ public class LamaList {
 
     public LamaList cons(Object el) {
         var res = new LinkedList<>(els);
-        res.add(LamaContext.wrapRef(el));
+        res.addFirst(LamaContext.wrapRef(el));
         return new LamaList(res);
     }
 
