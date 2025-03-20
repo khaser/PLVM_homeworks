@@ -27,12 +27,12 @@ public final class LamaContext {
         return o[0];
     }
 
-    private final Stack<HashMap<String, Object[]>> varScopes = new Stack<>();
-    private final Stack<HashMap<String, CallTarget>> funcScopes = new Stack<>();
-
+    private final LamaFrame globalFrame = new LamaFrame();
+    final private Stack<LamaFrame> funFrames = new Stack<>();
 
     public LamaContext(TruffleLanguage.Env env) {
         this.inputScanner = new Scanner(new BufferedReader(new InputStreamReader(env.in())));
+        this.globalFrame.pushScope();
     }
 
     public Scanner getInputScanner() {
@@ -40,44 +40,52 @@ public final class LamaContext {
     }
 
     public void pushScope() {
-        varScopes.push(new HashMap<>());
-        funcScopes.push(new HashMap<>());
+        funFrames.peek().pushScope();
     }
 
     public void popScope() {
-        varScopes.pop();
-        funcScopes.pop();
+        funFrames.peek().popScope();
     }
 
-    private HashMap<String, Object[]> findVarScope(String sym) {
-        return varScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
+    public void pushFrame() {
+        funFrames.push(new LamaFrame());
     }
 
-    private HashMap<String, CallTarget> findFuncScope(String sym) {
-        return funcScopes.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b).orElseThrow();
+    public void popFrame() {
+        funFrames.pop();
     }
 
     public Object getVar(String sym) {
-        var scope = this.findVarScope(sym);
-        return unwrapRef(scope.get(sym));
+        return unwrapRef(getVarRef(sym));
     }
 
     public Object[] getVarRef(String sym) {
-        var scope = this.findVarScope(sym);
+        var scope = funFrames.peek().findVarScope(sym)
+                    .or(() -> globalFrame.findVarScope(sym))
+                    .orElseThrow();
         return scope.get(sym);
     }
 
-
-    public void defVar(String sym, Object value) {
-        varScopes.peek().put(sym, wrapRef(value));
-    }
-
     public CallTarget getFun(String sym) {
-        var scope = this.findFuncScope(sym);
+        var scope = this.funFrames.peek().findFuncScope(sym)
+                    .or(() -> this.globalFrame.findFuncScope(sym))
+                    .orElseThrow();
         return scope.get(sym);
     }
 
     public void defFun(String sym, CallTarget func) {
-        funcScopes.peek().put(sym, func);
+        funFrames.peek().defFun(sym, func);
+    }
+
+    public void defVar(String sym, Object value) {
+        funFrames.peek().defVar(sym, value);
+    }
+
+    public void defFunGlobal(String sym, CallTarget func) {
+        globalFrame.defFun(sym, func);
+    }
+
+    public void defVarGlobal(String sym, Object value) {
+        globalFrame.defVar(sym, value);
     }
 }

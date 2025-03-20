@@ -1,9 +1,7 @@
 package khaser.lama;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.lang.Integer;
-import java.util.Objects;
 
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
@@ -22,11 +20,9 @@ public class LamaNodeFactory {
 
     private LamaScopeNode curScope;
 
-    private List<String> curFunArgNames;
 
     public LamaNodeFactory() {
     }
-
 
     public LamaExprNode createBinop(Token opToken, LamaExprNode leftNode, LamaExprNode rightNode) {
         if (leftNode == null || rightNode == null) {
@@ -66,14 +62,6 @@ public class LamaNodeFactory {
         }
     }
 
-    public void setFunArgs(List<String> args) {
-        curFunArgNames = args;
-    }
-
-    public void unsetFunArgs() {
-        curFunArgNames = new ArrayList<>();
-    }
-
     public LamaScopeNode createScope(List<LamaDefNode> scopeDefs,
                                      List<LamaFunDefNode> scopeFunDefs,
                                      LamaExprNode expr) {
@@ -91,17 +79,16 @@ public class LamaNodeFactory {
         return createDef(sym, new LamaConstIntNode(0));
     }
 
-    public LamaFunDefNode createFunDef(String funName, LamaScopeNode funBody) {
-        return new LamaFunDefNode(funName, funBody);
-    }
-
-    public LamaExprNode createRead(Token varNameToken) {
-        String varName = varNameToken.getText();
-        if (curFunArgNames != null && curFunArgNames.contains(varName)) {
-            return new LamaReadArgNode(curFunArgNames.indexOf(varName));
-        } else {
-            return new LamaReadNode(varName);
+    public LamaFunDefNode createFunDef(String funName, List<String> largs, LamaScopeNode funBody) {
+        String[] args = largs.toArray(new String[0]);
+        List<LamaDefNode> defs = new LinkedList<>();
+        for (int i = 0; i < args.length; ++i) {
+            defs.add(new LamaDefNode(args[i], new LamaReadArgNode(i)));
         }
+        var wrappedBody = new LamaScopeNode(defs.toArray(new LamaDefNode[0]),
+                                            new LamaFunDefNode[0],
+                                            new LamaNestedScope(funBody));
+        return new LamaFunDefNode(funName, wrappedBody);
     }
 
     public LamaCallNode createCall(String callTarget, List<LamaExprNode> args) {

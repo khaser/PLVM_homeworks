@@ -27,8 +27,10 @@ public final class LamaCallNode extends LamaExprNode {
         for (int i = 0; i < this.callArgs.length; i++) {
             argVals[i] = this.callArgs[i].execute(frame);
         }
-
-        return callTarget.call(argVals);
+        getContext().pushFrame();
+        var res = callTarget.call(argVals);
+        getContext().popFrame();
+        return res;
     }
 
 }

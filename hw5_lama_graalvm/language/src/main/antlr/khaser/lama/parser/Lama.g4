@@ -43,27 +43,25 @@ scope_expr returns [LamaScopeNode result, List<LamaDefNode> defs, List<LamaFunDe
     { $defs = new LinkedList(); $funDefs = new LinkedList(); }
     (
         var_defs { $defs.addAll($var_defs.result); }
-        | fun_def { $funDefs.add(factory.createFunDef($fun_def.funName, $fun_def.body)); }
+        | fun_def { $funDefs.add($fun_def.result); }
     )*
     expr_seq
     { $result = factory.createScope($defs, $funDefs, $expr_seq.result); }
     ;
 
 // Definitions
-fun_def returns [String funName, List<String> args, LamaScopeNode body] :
+fun_def returns [LamaFunDefNode result] :
     'public'? 'fun'
-    LIDENT { $funName = $LIDENT.getText(); }
+    LIDENT { String funName = $LIDENT.getText(); }
     '('
-    { $args = new LinkedList(); }
-    (LIDENT { $args.add($LIDENT.getText()); }
-        (',' LIDENT { $args.add($LIDENT.getText()); })*
+    { List<String> args = new LinkedList(); }
+    (LIDENT { args.add($LIDENT.getText()); }
+        (',' LIDENT { args.add($LIDENT.getText()); })*
     )?
     ')'
-    { factory.setFunArgs($args); }
     '{'
-    scope_expr { $body = $scope_expr.result; }
+    scope_expr { $result = factory.createFunDef(funName, args, $scope_expr.result); }
     '}'
-    { factory.unsetFunArgs(); }
     ;
 
 var_defs returns [List<LamaDefNode> result] :
@@ -165,7 +163,7 @@ expr_primary returns [LamaExprNode result] :
     DECIMAL { $result = new LamaConstIntNode(factory.dec2Int($DECIMAL)); }
     | STRING { $result = new LamaStringCreateNode($STRING.getText().replaceAll("\"", "")); }
     | CHAR { $result = new LamaConstIntNode(factory.char2Int($CHAR)); }
-    | LIDENT { $result = factory.createRead($LIDENT); }
+    | LIDENT { $result = new LamaReadNode($LIDENT.getText()); }
     | 'skip' { $result = new LamaSkipNode(); }
     | '(' scope_expr { $result = new LamaNestedScope($scope_expr.result); } ')'
     | if_expr { $result = $if_expr.result; }

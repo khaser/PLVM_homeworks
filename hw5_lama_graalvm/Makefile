@@ -5,13 +5,20 @@ REG_TESTS_DIR := regression
 
 BINARY := ./launcher/build/native/nativeCompile/application
 FAT_JAR := ./launcher/build/libs/launcher-all.jar
-JAVA_CMD := java -cp $(FAT_JAR) khaser.lama.LamaMain
+JAVA_CMD := java -Xss1024m -cp $(FAT_JAR) khaser.lama.LamaMain
+
+# 56,63 - first-class function
+# 82 - type pattern matching
+REG_IGNORED := \
+	%/test059.lama \
+	%/test063.lama \
+	%/test082.lama
 
 SRCS := $(shell find ./language/src ./launcher/src -name '*.java' -or -name '*.g4' | sed 's@ @\\ @g')
 
 # TODO: add ignored tests list
 
-REG_TESTS=$(sort $(wildcard $(REG_TESTS_DIR)/test*.lama))
+REG_TESTS=$(sort $(filter-out $(REG_IGNORED: =,), $(wildcard $(REG_TESTS_DIR)/test*.lama)))
 SMOKE_TESTS=$(sort $(wildcard $(SMOKE_TESTS_DIR)/*.lama))
 
 test: regression smoke

@@ -26,4 +26,10 @@ public class LamaDefNode extends LamaNode {
         getContext().defVar(sym, exprVal);
         return exprVal;
     }
+
+    public Object executeGlobal(VirtualFrame frame) {
+        Object exprVal = this.expr.execute(frame);
+        getContext().defVarGlobal(sym, exprVal);
+        return exprVal;
+    }
 }

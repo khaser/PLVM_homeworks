@@ -34,6 +34,19 @@ public class LamaScopeNode extends LamaNode {
         return res;
     }
 
+    public Object executeGlobal(VirtualFrame frame) {
+        getContext().pushFrame();
+        for (LamaDefNode def : this.defs) {
+            def.executeGlobal(frame);
+        }
+        for (var funDef : this.funDefs) {
+            funDef.registerGlobal();
+        }
+        var res = this.expr.execute(frame);
+        getContext().popFrame();
+        return res;
+    }
+
     public LamaScopeNode concat(LamaExprNode tail) {
         return new LamaScopeNode(this.defs, this.funDefs, new LamaSeqNode(this.expr, tail));
     }
