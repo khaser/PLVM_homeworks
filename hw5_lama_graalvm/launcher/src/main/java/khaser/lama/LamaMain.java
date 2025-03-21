@@ -54,10 +54,6 @@ public final class LamaMain {
             Value result = context.eval(source);
             out.println("Lama successfully executed:");
             out.println(result);
-            // if (context.getBindings(Lama).getMember("main") == null) {
-            //     err.println("No function main() defined in Lama source file.");
-            //     return 1;
-            // }
             return 0;
         } catch (PolyglotException ex) {
             if (ex.isInternalError()) {
