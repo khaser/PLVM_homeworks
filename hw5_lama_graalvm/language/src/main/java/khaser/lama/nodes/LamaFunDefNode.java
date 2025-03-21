@@ -19,14 +19,10 @@ public class LamaFunDefNode extends LamaNode {
 
     @Override
     public Integer execute(VirtualFrame frame) {
-        register();
-        return 0;
-    }
-
-    public void register() {
         var ctx = getContext();
         var funRootNode = new LamaFunctionRootNode(currentTruffleLanguage(), this.body, new LamaFrame(ctx.curFrame), ctx);
         ctx.defFun(funName, funRootNode.getCallTarget());
+        return 0;
     }
 
 }

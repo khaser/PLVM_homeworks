@@ -32,7 +32,7 @@ public class LamaScopeNode extends LamaNode {
             def.execute(frame);
         }
         for (var funDef : this.funDefs) {
-            funDef.register();
+            funDef.execute(frame);
         }
         var res = this.expr.execute(frame);
         getContext().popScope();

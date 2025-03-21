@@ -21,7 +21,7 @@ public final class LamaCallNode extends LamaExprNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        CallTarget callTarget = this.target.execute(frame);
+        CallTarget callTarget = this.target.execute();
 
         Object[] argVals = new Object[this.callArgs.length];
         for (int i = 0; i < this.callArgs.length; i++) {
