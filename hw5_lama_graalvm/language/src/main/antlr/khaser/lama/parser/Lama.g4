@@ -178,6 +178,8 @@ expr_primary returns [LamaExprNode result] :
     | case_expr { $result = $case_expr.result; }
     | s_expr { $result = $s_expr.result; }
     | list_expr { $result = $list_expr.result; }
+    | 'true' { $result = new LamaConstIntNode(1); }
+    | 'false' { $result = new LamaConstIntNode(0); }
     ;
 
 expr_ref returns [LamaRefNode result] :
@@ -292,6 +294,9 @@ case_simpl_pattern returns [LamaPattern result] :
     | case_array_pattern { $result = $case_array_pattern.result; }
     | case_sexpr_pattern { $result = $case_sexpr_pattern.result; }
     | case_list_pattern { $result = $case_list_pattern.result; }
+    | '(' case_pattern ')' { $result = $case_pattern.result; }
+    | 'true' { $result = new LamaIntPattern(1); }
+    | 'false' { $result = new LamaIntPattern(0); }
     ;
     // TODO: string pattern
 
@@ -343,3 +348,5 @@ WS : ' ' -> skip;
 TAB : '\t' -> skip;
 NEWLINE : '\n' -> skip;
 BLOCK_COMMENT : '(*' .*? '*)' -> skip;
+LINE_COMMENT : '--' ~[\r\n]* -> skip;
+
