@@ -12,8 +12,10 @@ public class LamaDoWhileNode extends LamaExprNode {
     private LamaScopeNode doWhile;
 
     public LamaDoWhileNode(LamaExprNode pred, LamaScopeNode body) {
-        this.doWhile = body.concat(new LamaWhileDoNode(pred, body));
+        doWhile = body.concat(new LamaWhileDoNode(pred, body.defsToAssigns()));
     }
+
+
     public Integer execute(VirtualFrame frame) {
         this.doWhile.execute(frame);
         return 0;

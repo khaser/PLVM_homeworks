@@ -27,4 +27,11 @@ public class LamaDefNode extends LamaNode {
         return exprVal;
     }
 
+    public LamaExprNode getExpr() {
+        return expr;
+    }
+
+    public String getSym() {
+        return sym;
+    }
 }
