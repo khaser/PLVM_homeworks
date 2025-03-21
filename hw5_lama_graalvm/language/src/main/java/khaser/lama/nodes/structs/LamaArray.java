@@ -1,5 +1,6 @@
 package khaser.lama.nodes.structs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import khaser.lama.LamaContext;
 
 import java.util.Arrays;
@@ -34,6 +35,7 @@ public class LamaArray {
     }
 
     @Override
+    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return Arrays.toString(Arrays.stream(els).map(LamaContext::unwrapRef).toArray());
     }

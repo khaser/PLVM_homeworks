@@ -1,5 +1,6 @@
 package khaser.lama.nodes.structs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import khaser.lama.LamaContext;
 
 import java.util.LinkedList;
@@ -48,6 +49,7 @@ public class LamaList {
     }
 
     @Override
+    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return "{%s}".formatted(
                         els.stream().map(LamaContext::unwrapRef)

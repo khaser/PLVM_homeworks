@@ -1,5 +1,6 @@
 package khaser.lama.nodes.structs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import khaser.lama.LamaContext;
 
 import java.util.Arrays;
@@ -22,6 +23,7 @@ public class LamaSexpr extends LamaArray {
     }
 
     @Override
+    @CompilerDirectives.TruffleBoundary
     public String toString() {
         if (els.length > 0) {
             return "%s (%s)".formatted(

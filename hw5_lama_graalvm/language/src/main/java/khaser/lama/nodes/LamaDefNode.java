@@ -2,11 +2,6 @@ package khaser.lama.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-
-import khaser.lama.nodes.LamaNode;
 
 public class LamaDefNode extends LamaNode {
 
