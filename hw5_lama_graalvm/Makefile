@@ -41,12 +41,12 @@ SMOKE_TESTS=$(sort $(wildcard $(SMOKE_TESTS_DIR)/*.lama))
 
 test: regression smoke
 
-regression_binary: $(BINARY)
-	# TODO
-	# $(foreach test, $(REG_TESTS), $(GRADLE) run build $(test))
+regression_native: $(BINARY)
+	@$(foreach test, $(REG_TESTS), echo running $(test) && \
+					 diff <($(BINARY) $(test) < $(test:.lama=.input) | head --lines=-2) $(test:.lama=.log) &&) \
 	echo Regression test passed
 
-smoke_binary: $(BINARY)
+smoke_native: $(BINARY)
 	@$(foreach test, $(SMOKE_TESTS), echo running $(test) && \
 					 diff <($(BINARY) $(test) < $(test:.lama=.in)) $(test:.lama=.ref) &&) \
 	echo Smoke tests passed
