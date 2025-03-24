@@ -27,7 +27,7 @@ Upstream (recursive AST interpreter): 7.55 s
 Upstream (recursive bytecode interpreter): 3.07 s
 Lamai (runtime validation): ~1.95 s
 Lamav (preprocess validation): ~1.87 s
-Lama truffle native image: 1040 s (17 min 45 s)
+Lama truffle native image: ~400 s (6 min 40 s)
 ```
 
 ### Known issues
