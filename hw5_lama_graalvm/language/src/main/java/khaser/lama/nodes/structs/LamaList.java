@@ -49,7 +49,6 @@ public class LamaList {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return "{%s}".formatted(
                         els.stream().map(LamaContext::unwrapRef)

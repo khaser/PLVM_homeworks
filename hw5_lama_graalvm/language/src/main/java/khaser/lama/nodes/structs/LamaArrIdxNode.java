@@ -1,5 +1,6 @@
 package khaser.lama.nodes.structs;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import khaser.lama.LamaContext;

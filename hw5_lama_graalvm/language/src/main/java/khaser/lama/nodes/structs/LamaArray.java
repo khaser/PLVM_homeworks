@@ -35,7 +35,6 @@ public class LamaArray {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return Arrays.toString(Arrays.stream(els).map(LamaContext::unwrapRef).toArray());
     }

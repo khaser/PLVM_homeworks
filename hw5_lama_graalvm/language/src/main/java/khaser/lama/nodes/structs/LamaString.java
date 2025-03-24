@@ -12,7 +12,6 @@ public class LamaString extends LamaArray {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return "\""
                 + Arrays.stream(els)

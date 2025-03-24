@@ -5,7 +5,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class LamaDefNode extends LamaNode {
 
-    private String sym;
+    private final String sym;
 
     @Child
     private LamaExprNode expr;

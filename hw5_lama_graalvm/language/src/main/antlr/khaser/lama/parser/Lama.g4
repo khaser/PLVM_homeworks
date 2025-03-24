@@ -260,18 +260,21 @@ for_expr returns [LamaExprNode result] :
 // Pattern matching
 case_expr returns [LamaExprNode result] :
     'case' scrut=expr 'of'
-    { var branches = new LinkedList<LamaCaseBranch>(); }
-    case_branch { branches.add($case_branch.result); }
+    { var branches = new LinkedList<LamaScopeNode>(); var pats = new LinkedList<LamaPattern>(); }
+    case_branch { branches.add($case_branch.scope); pats.add($case_branch.pat); }
     (
-        '|' case_branch { branches.add($case_branch.result); }
+        '|' case_branch { branches.add($case_branch.scope); pats.add($case_branch.pat); }
     )*
     'esac'
-    { $result = new LamaCaseNode($scrut.result, branches.toArray(new LamaCaseBranch[0])); }
+    { $result = new LamaCaseNode($scrut.result,
+                                 pats.toArray(new LamaPattern[0]),
+                                 branches.toArray(new LamaScopeNode[0])
+                                ); }
     ;
 
-case_branch returns [LamaCaseBranch result] :
-    pat=case_pattern '->' scope=scope_expr
-    { $result = new LamaCaseBranch($pat.result, $scope.result); }
+case_branch returns [LamaScopeNode scope, LamaPattern pat] :
+    case_pattern '->' scope_expr
+    { $pat = $case_pattern.result; $scope = $scope_expr.result; }
     ;
 
 case_pattern returns [LamaPattern result] :

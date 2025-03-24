@@ -23,7 +23,6 @@ public class LamaSexpr extends LamaArray {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         if (els.length > 0) {
             return "%s (%s)".formatted(

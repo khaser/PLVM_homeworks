@@ -1,6 +1,7 @@
 package khaser.lama.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import khaser.lama.nodes.cfg.LamaSeqNode;
 import khaser.lama.nodes.cfg.LamaSkipNode;
@@ -26,6 +27,7 @@ public class LamaScopeNode extends LamaNode {
     }
 
     @Override
+    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         getContext().pushScope();
         for (LamaDefNode def : this.defs) {
