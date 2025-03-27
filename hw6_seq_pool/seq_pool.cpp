@@ -2,15 +2,72 @@
 #include <cstddef>
 #include <cassert>
 #include <cstring>
+#include <csignal>
 #include <unistd.h>
 #include <sys/mman.h>
 
 #include <iostream>
-
+#include <vector>
 
 #include "seq_pool.h"
 
-// TODO: setup SIGSEGV error handler?
+namespace {
+struct sigaction cur_handler;
+struct sigaction prev_handler;
+
+class PoolDepletionLogger {
+
+  PoolDepletionLogger() { }
+
+  static PoolDepletionLogger* ptr;
+  static constexpr char msg[] = "SeqPool exhausted!\n";
+
+  std::vector<std::pair<char*, char*>> guard_zones;
+
+public:
+
+  PoolDepletionLogger(PoolDepletionLogger &other) = delete;
+  void operator=(const PoolDepletionLogger &) = delete;
+
+  static PoolDepletionLogger *get() {
+    if (ptr) {
+      return ptr;
+    } else {
+      cur_handler.sa_flags = SA_SIGINFO;
+      cur_handler.sa_sigaction = handler;
+      sigemptyset(&cur_handler.sa_mask);
+      assert(sigaction(SIGSEGV, &cur_handler, &prev_handler) == 0);
+      return ptr = new PoolDepletionLogger;
+    }
+  }
+
+  void addGuard(const std::pair<char*, char*>& guard_zone) {
+    guard_zones.push_back(guard_zone);
+  }
+
+  // Should be reentrant
+  static void handler(int sig, siginfo_t *info, void *ucontext) {
+    char* mem_hit = (char*) info->si_addr;
+
+    for (const auto& zone : PoolDepletionLogger::get()->guard_zones) {
+      if (zone.first <= mem_hit && mem_hit <= zone.second) {
+        write(STDERR_FILENO, msg, strlen(msg));
+        break;
+      }
+    }
+
+    if (prev_handler.sa_handler == SIG_DFL) {
+      sigaction(sig, &prev_handler, NULL);
+      raise(sig);
+    } else if (prev_handler.sa_handler != SIG_IGN) {
+      prev_handler.sa_handler(sig);
+    }
+  }
+
+};
+
+PoolDepletionLogger* PoolDepletionLogger::ptr;
+}
 
 SeqPool::SeqPool(size_t pool_size, size_t max_alloc_sz) {
   assert(pool_size >= max_alloc_sz);
@@ -25,6 +82,8 @@ SeqPool::SeqPool(size_t pool_size, size_t max_alloc_sz) {
   alloc_end = guard_end + pgs_to_protect * pg_size;
   alloc_start = guard_end + pgs_to_alloc * pg_size;
   free_start = alloc_start;
+
+  PoolDepletionLogger::get()->addGuard({guard_end, alloc_end});
 }
 
 void* SeqPool::alloc(size_t bytes) {
@@ -34,4 +93,5 @@ void* SeqPool::alloc(size_t bytes) {
 SeqPool::~SeqPool() {
   munmap(guard_end, alloc_start - guard_end);
 }
+
 // vim: ts=2:sw=2

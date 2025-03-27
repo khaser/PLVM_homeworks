@@ -1,6 +1,6 @@
 NAME=seq_pool
 CC=g++
-CC_FLAGS=-O2 -fstack-protector-all
+CC_FLAGS=-O2 -g -Wno-unused-result
 LD_FLAGS=$(CC_FLAGS)
 
 test: $(NAME).o test.o

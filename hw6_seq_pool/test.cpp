@@ -52,6 +52,14 @@ static inline void test(unsigned n) {
   {
     SeqPool pool(n * sizeof(Node), sizeof(Node));
     create_list_with_pool(n, pool);
+
+    // // Case to check true-positive notification
+    // SeqPool pool((n - 1000) * sizeof(Node), sizeof(Node));
+    // create_list_with_pool(n, pool);
+
+    // // Case to check false-positive notification
+    // char* inval = (char*) 105000;
+    // *inval = 0;
   }
   get_usage(finish);
 
