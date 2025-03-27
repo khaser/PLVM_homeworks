@@ -2,6 +2,7 @@ package khaser.lama;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import java.util.HashMap;
 import java.util.Stack;
@@ -31,21 +32,25 @@ public class LamaFrame {
 
     @CompilerDirectives.TruffleBoundary
     Object[] getVarRef(String sym) {
-        return vars.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b)
-                            .map(m -> m.get(sym))
-                            .orElseGet(() -> rootFrame.getVarRef(sym));
+        for (int i = vars.size() - 1; i >= 0; --i) {
+            if (vars.get(i).containsKey(sym)) {
+                return vars.get(i).get(sym);
+            }
+        }
+        return rootFrame.getVarRef(sym);
     }
 
-    @CompilerDirectives.TruffleBoundary
     Object getVar(String sym) {
         return unwrapRef(getVarRef(sym));
     }
 
-    @CompilerDirectives.TruffleBoundary
     CallTarget getFun(String sym) {
-        return funcs.stream().filter(scope -> scope.containsKey(sym)).reduce((a, b) -> b)
-                             .map(m -> m.get(sym))
-                             .orElseGet(() -> rootFrame.getFun(sym));
+        for (int i = funcs.size() - 1; i >= 0; --i) {
+            if (funcs.get(i).containsKey(sym)) {
+                return funcs.get(i).get(sym);
+            }
+        }
+        return rootFrame.getFun(sym);
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -4,7 +4,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.CallTarget;
 
 import khaser.lama.nodes.LamaExprNode;
 
@@ -24,14 +23,12 @@ public final class LamaCallNode extends LamaExprNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        CallTarget callTarget = this.target.execute();
-
         CompilerAsserts.compilationConstant(this.callArgs.length);
         Object[] argVals = new Object[this.callArgs.length];
         for (int i = 0; i < this.callArgs.length; i++) {
             argVals[i] = this.callArgs[i].execute(frame);
         }
-        return callTarget.call(argVals);
+        return target.executeDispatch(argVals);
     }
 
 }

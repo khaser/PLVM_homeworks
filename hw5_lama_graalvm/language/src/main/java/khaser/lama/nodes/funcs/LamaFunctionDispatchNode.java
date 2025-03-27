@@ -1,20 +1,25 @@
 package khaser.lama.nodes.funcs;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.CallTarget;
-
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import khaser.lama.LamaContext;
 
-public final class LamaFunctionDispatchNode extends Node {
-    private String sym;
+@NodeField(name = "funName", type = String.class)
+public abstract class LamaFunctionDispatchNode extends Node {
+    public abstract Object executeDispatch(Object[] args);
+    protected abstract String getFunName();
 
-    public LamaFunctionDispatchNode(String sym) {
-        this.sym = sym;
+    @Specialization
+    public Object direct(Object[] args,
+                         @Cached(value = "getContext().getFun(getFunName())", neverDefault = true)
+                         CallTarget cachedCallNode) {
+        return cachedCallNode.call(args);
     }
 
-    public CallTarget execute() {
-        return LamaContext.get(this).getFun(this.sym);
+    protected final LamaContext getContext() {
+        return LamaContext.get(this);
     }
 }

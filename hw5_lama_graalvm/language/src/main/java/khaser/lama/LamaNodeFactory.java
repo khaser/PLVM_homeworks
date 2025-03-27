@@ -5,6 +5,7 @@ import java.lang.Integer;
 
 import khaser.lama.nodes.funcs.LamaCallNode;
 import khaser.lama.nodes.funcs.LamaFunctionDispatchNode;
+import khaser.lama.nodes.funcs.LamaFunctionDispatchNodeGen;
 import khaser.lama.nodes.funcs.LamaReadArgNode;
 import khaser.lama.nodes.structs.LamaArrCreateNode;
 import khaser.lama.nodes.structs.LamaListCreateNode;
@@ -93,7 +94,7 @@ public class LamaNodeFactory {
     }
 
     public LamaCallNode createCall(String callTarget, List<LamaExprNode> args) {
-        return new LamaCallNode(new LamaFunctionDispatchNode(callTarget),
+        return new LamaCallNode(LamaFunctionDispatchNodeGen.create(callTarget),
                                 args.toArray(new LamaExprNode[0]));
     }
 
