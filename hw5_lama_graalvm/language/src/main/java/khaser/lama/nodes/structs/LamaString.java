@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public class LamaString extends LamaArray {
+    @CompilerDirectives.TruffleBoundary
     public LamaString(String str) {
         super(str.chars().boxed().toArray());
     }

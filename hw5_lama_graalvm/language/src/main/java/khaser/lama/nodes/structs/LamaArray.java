@@ -10,7 +10,10 @@ public class LamaArray {
     protected final Object[][] els;
 
     public LamaArray(Object[] els) {
-        this.els = Arrays.stream(els).map(LamaContext::wrapRef).toArray(Object[][]::new);
+        this.els = new Object[els.length][1];
+        for (int i = 0; i < els.length; ++i) {
+            this.els[i] = LamaContext.wrapRef(els[i]);
+        }
     }
 
     public Object getEl(int idx) {

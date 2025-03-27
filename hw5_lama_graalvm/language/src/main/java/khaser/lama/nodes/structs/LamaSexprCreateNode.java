@@ -1,5 +1,6 @@
 package khaser.lama.nodes.structs;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import khaser.lama.LamaContext;
@@ -20,9 +21,11 @@ public class LamaSexprCreateNode extends LamaExprNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return new LamaSexpr(ident,
-                                Arrays.stream(this.args)
-                                    .map(expr -> expr.execute(frame))
-                                    .toArray());
+        CompilerAsserts.compilationConstant(args.length);
+        Object[] vals = new Object[args.length];
+        for (int i = 0; i < args.length; i++) {
+            vals[i] = args[i].execute(frame);
+        }
+        return new LamaSexpr(ident, vals);
     }
 }

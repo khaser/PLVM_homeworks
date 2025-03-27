@@ -1,5 +1,6 @@
 package khaser.lama.nodes.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 public abstract class LamaBuiltinStringNode extends LamaNode {
 
     @Specialization
+    @CompilerDirectives.TruffleBoundary
     public LamaString exec(Object expr) {
         return new LamaString(expr.toString());
     }
