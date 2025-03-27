@@ -6,16 +6,16 @@ subprojects {
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_23
-        targetCompatibility = JavaVersion.VERSION_23
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         toolchain {
-            languageVersion = JavaLanguageVersion.of(23)
+            languageVersion = JavaLanguageVersion.of(21)
             vendor = JvmVendorSpec.matching("GraalVM Community")
         }
     }
 
     ext {
-        graal_version = '24.1.0'
+        graal_version = '23.1.2'
         antlr_version = '4.9.2'
     }
 }

@@ -8,11 +8,11 @@ graalvmNative {
     toolchainDetection.set(true)
     binaries {
         named('main') {
-            imageName.set('application')
+            imageName.set('lama-truffle')
             debug.set(true)
             verbose.set(true)
             sharedLibrary.set(false)
-            quickBuild.set(true)
+            // quickBuild.set(true)
             useFatJar.set(false)
             buildArgs.add("--initialize-at-build-time=khaser.lama.LamaLanguageProvider")
         }

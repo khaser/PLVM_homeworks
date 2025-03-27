@@ -16,7 +16,8 @@
       logger-p5 = pkgs.callPackage ./logger.nix {};
       GT = pkgs.callPackage ./GT.nix { inherit buildDunePackage logger-p5; };
       ostap = pkgs.callPackage ./ostap.nix { inherit buildDunePackage GT; };
-      graalvm = pkgs-unstable.graalvm-ce;
+      # graalvm = pkgs-unstable.graalvm-ce;
+      graalvm = pkgs.graalvm-ce;
     in {
       devShell = pkgs.mkShell {
         name = "plvm-lama";
