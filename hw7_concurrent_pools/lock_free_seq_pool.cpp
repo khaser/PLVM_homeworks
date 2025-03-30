@@ -12,7 +12,7 @@
 #include "lock_free_seq_pool.h"
 #include "pool_depletion_logger.h"
 
-size_t LockFreeSeqPool::poolFreeId = 0;
+std::atomic_size_t LockFreeSeqPool::poolFreeId = 0;
 
 LockFreeSeqPool::LockFreeSeqPool(size_t pool_size, size_t max_alloc_sz) {
   assert(pool_size >= max_alloc_sz);
@@ -26,17 +26,16 @@ LockFreeSeqPool::LockFreeSeqPool(size_t pool_size, size_t max_alloc_sz) {
 
   alloc_end = guard_end + pgs_to_protect * pg_size;
   alloc_start = guard_end + pgs_to_alloc * pg_size;
-  free_start.store(alloc_start);
+  free_start.store(alloc_start, std::memory_order_relaxed);
 
-  PoolDepletionLogger::regHandler(++poolFreeId, guard_end, alloc_end);
-}
+  poolId = poolFreeId.fetch_add(1, std::memory_order_relaxed) + 1;
 
-void* LockFreeSeqPool::alloc(size_t bytes) {
-  return (void*) (free_start -= bytes);
+  assert(PoolDepletionLogger::regHandler(poolId, guard_end, alloc_end) && "CNT_POOL_QUOTA exhausted");
 }
 
 LockFreeSeqPool::~LockFreeSeqPool() {
   munmap((void*) guard_end, alloc_start - guard_end);
+  PoolDepletionLogger::deregHandler(poolId);
 }
 
 // vim: ts=2:sw=2

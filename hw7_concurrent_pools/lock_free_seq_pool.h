@@ -9,13 +9,16 @@ class LockFreeSeqPool {
   std::atomic_intptr_t free_start;
   intptr_t alloc_start;
   // guard_end < alloc_end <= free_start <= alloc_start
+  size_t poolId;
 
-  static size_t poolFreeId;
+  static std::atomic_size_t poolFreeId;
 
 public:
   LockFreeSeqPool(size_t pool_size, size_t max_alloc_sz);
 
-  void* alloc(size_t bytes);
+  inline void* alloc(size_t bytes) {
+    return (void*) (free_start.fetch_sub(bytes, std::memory_order_acq_rel) - bytes);
+  }
 
   ~LockFreeSeqPool();
 };

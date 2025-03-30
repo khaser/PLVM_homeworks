@@ -9,12 +9,15 @@ class SeqPool {
   intptr_t alloc_start;
   // guard_end < alloc_end <= free_start <= alloc_start
 
-  static size_t poolFreeId;
+  static std::atomic_size_t poolFreeId;
+  size_t poolId;
 
 public:
   SeqPool(size_t pool_size, size_t max_alloc_sz);
 
-  void* alloc(size_t bytes);
+  inline void* alloc(size_t bytes) {
+    return (void*) (free_start -= bytes);
+  }
 
   ~SeqPool();
 };

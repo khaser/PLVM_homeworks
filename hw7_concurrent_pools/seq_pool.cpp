@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cerrno>
 #include <cstddef>
 #include <cassert>
@@ -12,7 +13,7 @@
 #include "seq_pool.h"
 #include "pool_depletion_logger.h"
 
-size_t SeqPool::poolFreeId = 0;
+std::atomic_size_t SeqPool::poolFreeId = 0;
 
 SeqPool::SeqPool(size_t pool_size, size_t max_alloc_sz) {
   assert(pool_size >= max_alloc_sz);
@@ -28,15 +29,14 @@ SeqPool::SeqPool(size_t pool_size, size_t max_alloc_sz) {
   alloc_start = guard_end + pgs_to_alloc * pg_size;
   free_start = alloc_start;
 
-  PoolDepletionLogger::regHandler(++poolFreeId, guard_end, alloc_end);
-}
+  poolId = poolFreeId.fetch_add(1, std::memory_order_relaxed) + 1;
 
-void* SeqPool::alloc(size_t bytes) {
-  return (void*) (free_start -= bytes);
+  assert(PoolDepletionLogger::regHandler(poolId, guard_end, alloc_end) && "Pool cnt quota exhausted");
 }
 
 SeqPool::~SeqPool() {
   munmap((void*) guard_end, alloc_start - guard_end);
+  PoolDepletionLogger::deregHandler(poolId);
 }
 
 // vim: ts=2:sw=2
