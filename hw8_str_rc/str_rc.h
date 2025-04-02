@@ -1,6 +1,7 @@
 #ifndef STR_RC_GUARD_
 #define STR_RC_GUARD_
 
+#include <cstring>
 #include <cassert>
 #include <climits>
 #include <cstdint>
@@ -17,56 +18,66 @@ class StrRC {
     uintptr_t raw;
   };
 
-  static constexpr char empty_string[] = "";
-
-  inline uintptr_t get_ptr() {
+  uintptr_t get_ptr() const {
     return ptr << 1;
   }
 
-  inline void set_ptr(uintptr_t new_ptr) {
+  void set_ptr(uintptr_t new_ptr) {
 #ifdef STR_RC_DEBUG
     assert(!(new_ptr & 1));
 #endif
     ptr = new_ptr >> 1;
   }
 
+  void swap(StrRC& oth) {
+    std::swap(raw, oth.raw);
+#ifdef STR_RC_DEBUG
+    std::swap(free_callback, oth.free_callback);
+#endif
+  }
+
 public:
-  inline StrRC() {
+  StrRC() {
     set_ptr((uintptr_t) 0);
     is_unique = false;
   }
 
-  inline StrRC(char* str) {
-    set_ptr((uintptr_t) str);
+  StrRC(const char* str) {
+    set_ptr((uintptr_t) strdup(str));
     is_unique = true;
   }
 
-  inline StrRC(StrRC& oth) : ptr(oth.ptr) {
+  StrRC(StrRC& oth) : ptr(oth.ptr) {
     is_unique = oth.is_unique = false;
   }
 
-  inline StrRC& operator= (char* str) {
-    StrRC tmp(str);
+  StrRC(StrRC&& oth) : ptr(oth.ptr), is_unique(oth.is_unique), free_callback(oth.free_callback) {
+    oth.is_unique = false;
+  }
+
+  StrRC& operator= (const char* str) {
+    StrRC tmp((char*) strdup(str));
     this->swap(tmp);
     return *this;
   }
 
-  inline StrRC& operator= (StrRC& oth) {
+  StrRC& operator= (StrRC& oth) {
+    if (this == &oth) return *this;
     StrRC tmp(oth);
     this->swap(tmp);
     return *this;
   }
 
-  inline const char* operator* () {
-    char* res = (char*) get_ptr();
-    return (res ? res : empty_string);
+  StrRC& operator= (StrRC&& oth) {
+    if (this == &oth) return *this;
+    StrRC tmp(std::move(oth));
+    this->swap(tmp);
+    return *this;
   }
 
-  inline void swap (StrRC& oth) {
-    std::swap(raw, oth.raw);
-#ifdef STR_RC_DEBUG
-    std::swap(free_callback, oth.free_callback);
-#endif
+  const char* operator* () const {
+    char* res = (char*) get_ptr();
+    return (res ? res : "");
   }
 
 #ifdef STR_RC_DEBUG
@@ -75,7 +86,7 @@ private:
   callback_t free_callback;
 
 public:
-  inline void reg_free_callback(callback_t callback) {
+  void reg_free_callback(callback_t callback) {
     free_callback = std::move(callback);
   }
 #endif
@@ -92,10 +103,10 @@ public:
     }
   }
 
-  friend std::ostream& operator<< (std::ostream&, StrRC);
+  friend std::ostream& operator<< (std::ostream&, const StrRC&);
 };
 
-inline std::ostream& operator<< (std::ostream& os, StrRC rc) {
+std::ostream& operator<< (std::ostream& os, const StrRC& rc) {
   return os << "[str: \"" << *rc << "\"" << (rc.is_unique ? ", unique]" : "]");
 }
 
