@@ -6,13 +6,13 @@
 #include <cassert>
 #include <optional>
 
-struct sigaction prev_sigsegv_handler;
-struct sigaction prev_sigbus_handler;
-std::optional<uintptr_t> target = {};
-sigjmp_buf buf;
+static struct sigaction prev_sigsegv_handler;
+static struct sigaction prev_sigbus_handler;
+static std::optional<uintptr_t> target = {};
+static sigjmp_buf buf;
 
 // Should be reentrant
-void safe_read_handler(int sig, siginfo_t *info, void *ucontext) {
+static void safe_read_handler(int sig, siginfo_t *info, void *ucontext) {
   uintptr_t mem_hit = (uintptr_t) info->si_addr;
   if (target.has_value() && *target == mem_hit) {
     siglongjmp(buf, 1);
@@ -63,10 +63,10 @@ inline std::optional<uint8_t> safe_read_uint8t(const uint8_t* p) {
 }
 
 // Testing
-sigjmp_buf test_buf;
-char test_flag;
+static sigjmp_buf test_buf;
+static char test_flag;
 
-void set_flag_handler(int sig, siginfo_t *info, void *ucontext) {
+static void set_flag_handler(int sig, siginfo_t *info, void *ucontext) {
   test_flag++;
   longjmp(test_buf, 1);
 }

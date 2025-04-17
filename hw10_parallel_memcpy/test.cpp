@@ -101,7 +101,7 @@ public:
 
 };
 
-uint8_t* generate_data(size_t data_sz) {
+static uint8_t* generate_data(size_t data_sz) {
   uint8_t* data = new uint8_t[data_sz];
   data[0] = 163;
   for (size_t i = 1; i < data_sz; ++i) {
