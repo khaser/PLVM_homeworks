@@ -1,4 +1,4 @@
-# Multythread memcpy function
+# Multithread memcpy function
 
 It's essential that threads using for coping are prelaunched
 

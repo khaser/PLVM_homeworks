@@ -28,6 +28,9 @@ class MemcpyService {
 public:
   MemcpyService(size_t cnt_workers) : cnt_workers(cnt_workers) {
     in_progress.store(0);
+    for (auto i : std::ranges::iota_view(0ull, cnt_workers)) {
+      workers.emplace_back(worker_job, i, this);
+    }
   }
 
   ~MemcpyService() {
@@ -41,18 +44,12 @@ public:
     cv.notify_all();
   }
 
-  void start_threads() {
-    for (auto i : std::ranges::iota_view(0ull, cnt_workers)) {
-      workers.emplace_back(worker_job, i, this);
-    }
-  }
-
 private:
   static void worker_job(std::stop_token stoken, int worker_id, MemcpyService* service) {
     while (!stoken.stop_requested()) {
       {
         std::unique_lock lock(service->mut);
-        service->cv.wait(lock, [&] { return service->in_progress != 0; });
+        service->cv.wait(lock, [&] { return service->in_progress.load(std::memory_order_acquire) != 0; });
         if (stoken.stop_requested()) {
           break;
         }
@@ -61,11 +58,10 @@ private:
       memcpy(task.dest, task.src, task.size);
       {
         std::unique_lock lock(service->mut);
-        // if (service->in_progress.fetch_sub(1, std::memory_order_release) == 1) {
-        if (service->in_progress.fetch_sub(1) == 1) {
+        if (service->in_progress.fetch_sub(1, std::memory_order_release) == 1) {
           service->cv.notify_all();
         } else {
-          service->cv.wait(lock, [&] { return service->in_progress == 0; });
+          service->cv.wait(lock, [&] { return service->in_progress.load(std::memory_order_acquire) == 0; });
         }
       }
     }
@@ -93,13 +89,12 @@ public:
     job.dest = dst;
     job.src = src;
     job.size = size;
-    // in_progress.store(cnt_workers, std::memory_order_release);
-    in_progress.store(cnt_workers);
+    in_progress.store(cnt_workers, std::memory_order_release);
     cv.notify_all();
 
     size_t to_copy = size % (size / cnt_workers);
     memcpy((char*) dst + size - to_copy, (char*) src + size - to_copy, to_copy);
-    cv.wait(lock, [&] { return in_progress == 0; });
+    cv.wait(lock, [&] { return in_progress.load(std::memory_order_acquire) == 0; });
 
     return dst;
   }
@@ -120,12 +115,10 @@ int main() {
   uint8_t* src = generate_data(DATA_SZ);
 
   std::cout << "Benchmarking parallel_memcpy...\n";
-  // for (auto workers : std::ranges::iota_view(2, 4)) {
   for (auto workers : std::ranges::iota_view(0, 9)) {
     uint8_t* dst = new uint8_t[DATA_SZ];
     {
       MemcpyService service(workers);
-      service.start_threads();
       using clock = std::chrono::high_resolution_clock;
       auto start = clock::now();
 
